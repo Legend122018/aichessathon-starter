@@ -1112,7 +1112,10 @@ def _python_get_move(fen: str, time_left_ms: int) -> str:
             COUNTER.clear()
         return best_move.uci()
     except Exception as exc:  # never lose a game to an unhandled error
-        print(f"search failed, playing fallback: {exc!r}")
+        # The output cap is 4096 bytes per move and passing it loses the game. A numba
+        # TypingError repr alone runs to several kilobytes, so this is truncated rather
+        # than trusted.
+        print(f"search failed, playing fallback: {exc!r}"[:200])
         return fallback
 
 
@@ -2764,5 +2767,8 @@ def get_move(fen: str, time_left_ms: int) -> str:
             return uci
         return _python_get_move(fen, time_left_ms)
     except Exception as exc:  # never lose a game to an unhandled error
-        print(f"search failed, playing fallback: {exc!r}")
+        # The output cap is 4096 bytes per move and passing it loses the game. A numba
+        # TypingError repr alone runs to several kilobytes, so this is truncated rather
+        # than trusted.
+        print(f"search failed, playing fallback: {exc!r}"[:200])
         return fallback

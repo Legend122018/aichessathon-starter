@@ -10,7 +10,7 @@ Last checked against the live rules on 2 September 2026.
 
 | Rule | Status |
 | --- | --- |
-| Zip, 50 MB unzipped at most | 103 KB unzipped, 25 KB zipped |
+| Zip, 50 MB unzipped at most | 114 KB unzipped, 28 KB zipped |
 | `agent.py` at the root, not in a folder | yes, `harness/package.py` builds it that way |
 | `get_move(fen: str, time_left_ms: int) -> str`, UCI | yes |
 | 6 uploads per team per day | tracked manually; gate locally before each upload |
@@ -122,7 +122,7 @@ which is the extra thinking the feature exists to buy.
 
 > "What you ship has to be source a judge can read." Obfuscated agents are disqualified.
 
-`agent.py` is 2,768 lines of annotated Python with 173 comment lines explaining the
+`agent.py` is 2,774 lines of annotated Python with 179 comment lines explaining the
 non-obvious parts. It passes `ruff` and `mypy --strict` clean. No minification, no
 encoded blobs, no generated identifiers.
 
