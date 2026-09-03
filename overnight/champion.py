@@ -12,6 +12,7 @@ turns. Everything above get_move is built at import time, inside the 60 s budget
 from __future__ import annotations
 
 import random
+import threading
 import time
 from collections.abc import Hashable, Iterable
 from typing import Any
@@ -192,6 +193,10 @@ TEMPO = 12
 # (insufficient material), where no amount of preference makes a win reachable.
 CONTEMPT = 24
 
+# A pawnless side needs more than this much extra material to force a win. Under it sit
+# KB vs K, KN vs K, KR vs KB and KR vs KR, none of which can be won against any defence.
+CANNOT_WIN = 400
+
 FILE_MASKS = tuple(chess.BB_FILES[chess.square_file(sq)] for sq in range(64))
 
 # Manhattan distance from each square to the centre, for the mop-up term below.
@@ -351,6 +356,16 @@ MVV_LVA_VICTIM = (0, 100, 320, 330, 500, 900, 0)
 # dominates, without overflowing the arithmetic.
 SEE_VALUE = (0, 100, 320, 330, 500, 900, 20000)
 ORDER = (chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN, chess.KING)
+
+
+def non_pawn_material(board: chess.Board, side: chess.Bitboard) -> int:
+    """Material on `side` excluding pawns and the king, for the cannot-win test."""
+    return (
+        chess.popcount(board.knights & side) * SEE_VALUE[chess.KNIGHT]
+        + chess.popcount(board.bishops & side) * SEE_VALUE[chess.BISHOP]
+        + chess.popcount(board.rooks & side) * SEE_VALUE[chess.ROOK]
+        + chess.popcount(board.queens & side) * SEE_VALUE[chess.QUEEN]
+    )
 
 
 def cheapest_attacker(
@@ -630,6 +645,22 @@ class Searcher:
 
         phase = min(self.phase, TOTAL_PHASE)
         score = (mg * phase + eg * (TOTAL_PHASE - phase)) // TOTAL_PHASE
+
+        # A pawnless side without a rook's worth of extra material cannot win, however
+        # good the score looks: KB vs K, KN vs K, KR vs KB and KR vs KR are all dead.
+        # Damp rather than zero, so we still decline to shed the material, but stop
+        # trading a last pawn into a draw we believe we are winning. The bitboard guard
+        # keeps the popcounts off the hot path whenever both sides still have pawns.
+        if score and not (white_pawns and black_pawns):
+            if score > 0:
+                strong, weak, strong_pawns = white, black, white_pawns
+            else:
+                strong, weak, strong_pawns = black, white, black_pawns
+            if not strong_pawns and (
+                non_pawn_material(board, strong) - non_pawn_material(board, weak)
+                < CANNOT_WIN
+            ):
+                score //= 16
 
         # Mop-up. With a decisive lead and no enemy pawns left, material tells us nothing
         # about progress, so every move looks equal and the search shuffles until the
@@ -1714,6 +1745,7 @@ if HAVE_NUMBA:
     JIT_DELTA = 200
     JIT_ASPIRATION = 20
     JIT_CONTEMPT = 24
+    JIT_CANNOT_WIN = 400
 
     JIT_MVV_LVA = _np.array([0, 100, 320, 330, 500, 900, 0], dtype=_np.int32)
     JIT_SEE_VALUE = _np.array([0, 100, 320, 330, 500, 900, 20000], dtype=_np.int32)
@@ -1753,6 +1785,9 @@ if HAVE_NUMBA:
         black_king = -1
         white_pawn_count = 0
         black_pawn_count = 0
+        # Material excluding pawns and kings, for the cannot-win test after the taper.
+        white_npm = 0
+        black_npm = 0
 
         for sq in range(128):
             if (sq & 0x88) != 0:
@@ -1770,6 +1805,11 @@ if HAVE_NUMBA:
                 mg -= JIT_MG_TABLE[(kind * 2) * 64 + index]
                 eg -= JIT_EG_TABLE[(kind * 2) * 64 + index]
             phase += JIT_PHASE_WEIGHT[kind]
+            if 2 <= kind <= 5:
+                if colour == 0:
+                    white_npm += JIT_SEE_VALUE[kind]
+                else:
+                    black_npm += JIT_SEE_VALUE[kind]
             file = sq & 7
             rank = sq >> 4
             if kind == 1:
@@ -1884,6 +1924,24 @@ if HAVE_NUMBA:
             phase = JIT_TOTAL_PHASE
         total = mg * phase + eg * (JIT_TOTAL_PHASE - phase)
         score = total // JIT_TOTAL_PHASE
+
+        # A pawnless side without a rook's worth of extra material cannot win: KB vs K,
+        # KN vs K, KR vs KB and KR vs KR are all dead however good the score looks.
+        # Damping rather than zeroing keeps us from shedding the material, while stopping
+        # us trading a last pawn into a draw we believe we are winning. This runs before
+        # the mop-up term below so a damped score cannot start a phantom king hunt.
+        # (KNN vs K is drawn too and is not caught here - too rare to pay for the test.)
+        if score != 0:
+            if score > 0:
+                strong_pawns = white_pawn_count
+                strong_npm = white_npm
+                weak_npm = black_npm
+            else:
+                strong_pawns = black_pawn_count
+                strong_npm = black_npm
+                weak_npm = white_npm
+            if strong_pawns == 0 and strong_npm - weak_npm < JIT_CANNOT_WIN:
+                score //= 16
 
         if score > JIT_MOP_UP or score < -JIT_MOP_UP:
             strong_white = score > 0
@@ -2388,6 +2446,145 @@ if HAVE_NUMBA:
 
 JIT_STATE: dict[str, Any] = {}
 
+# --------------------------------------------------------------------------------------
+# Pondering
+# --------------------------------------------------------------------------------------
+# The rules allow using the core after get_move returns. One rule shapes the whole
+# design: numba holds the GIL inside a jitted call, so the background search must run in
+# slices short enough that stopping it never costs meaningful clock.
+
+PONDER: dict[str, Any] = {"thread": None, "stop": True, "fen": "",
+                          "hits": 0, "tries": 0}
+
+# Stopping costs at most one slice, because that is the granularity at which the stop
+# flag can be read. Forty thousand nodes is roughly thirty milliseconds, so a sixty move
+# game gives up under two seconds of a 120 second clock in the worst case.
+PONDER_SLICE_NODES = 40000
+PONDER_MAX_SLICES = 400
+
+
+def _ponder_stop() -> bool:
+    """Halt the background search and wait for it to actually finish.
+
+    Returns False if it did not stop. That answer matters: a thread still inside
+    jit_search_root is still writing to every array the real search is about to use, and
+    two searches sharing one workspace produce a move that belongs to neither. The
+    handle is deliberately left set in that case, because the thread still owns the
+    workspace, and the caller plays the move from the pure-Python engine instead.
+    """
+    thread = PONDER["thread"]
+    if thread is None:
+        return True
+    PONDER["stop"] = True
+    thread.join(timeout=2.0)
+    if thread.is_alive():
+        return False
+    PONDER["thread"] = None
+    return True
+
+
+def _ponder_run(fen: str, rep_keys: list[int]) -> None:
+    """Iterative deepening on the predicted position, into the shared table.
+
+    search_root cannot resume a depth it abandoned, so an unfinished depth is simply
+    attempted again - the entries the abandoned attempt left behind make the retry
+    cheaper, and the search creeps forward rather than stalling. What matters at the end
+    is not the depth reached but the table: the next real search starts with its move
+    ordering already right.
+    """
+    try:
+        work = JIT_STATE["work"]
+        board, st = jit_new_state(fen)
+        rep = work["rep"]
+        for index, key in enumerate(rep_keys[-80:]):
+            rep[index] = key
+        base_rep = min(len(rep_keys), 80)
+        best = 0
+        depth = 1
+        slices = 0
+        while depth < 40 and slices < PONDER_MAX_SLICES:
+            if PONDER["stop"]:
+                return
+            # Hand the interpreter lock over before taking it again. Without this the
+            # loop reacquires it the instant a slice ends, and get_move - which needs
+            # the lock merely to begin - can wait through many slices before it runs.
+            # That is a direct loss of clock, and it is severe enough to lose games.
+            time.sleep(0.002)
+            if PONDER["stop"]:
+                return
+            work["info"][NODES] = 0
+            work["info"][STOPPED] = 0
+            work["info"][REP_LEN] = base_rep
+            work["info"][NODE_LIMIT] = PONDER_SLICE_NODES
+            jit_search_root(board, st, work["hist"], work["moves"], work["scores"],
+                            work["occ"], work["info"], work["killers"], work["hist_heur"],
+                            work["counter"], rep, work["tt_key"], work["tt_move"],
+                            work["tt_score"], work["tt_meta"], depth, -31000, 31000, best,
+                            work["out"])
+            slices += 1
+            if work["info"][STOPPED] == 1:
+                # The depth did not fit in one slice. Try it again rather than giving up:
+                # the entries this attempt wrote make the next one cheaper, so the search
+                # creeps forward instead of stalling the moment a depth gets expensive.
+                continue
+            best = int(work["out"][1])
+            depth += 1
+    except Exception:
+        # A failure here must cost nothing. The move that matters is chosen on the main
+        # thread, which does not depend on any of this having worked.
+        return
+
+
+def _ponder_start(fen: str, played: Any) -> None:
+    """Guess the reply and search the position it would give, on the opponent's time.
+
+    The guess comes from the transposition table: after our move, the entry for the new
+    position holds the best reply the search just found. That is the same prediction a
+    principal variation would give, without having to keep one.
+    """
+    try:
+        if not JIT_READY or PONDER["thread"] is not None:
+            return
+        board_obj = chess.Board(fen)
+        board_obj.push(played)
+        if board_obj.is_game_over():
+            return
+
+        work = JIT_STATE["work"]
+        board, st = jit_new_state(board_obj.fen())
+        key = jit_full_hash(board, st)
+        slot = int(key & TT_MASK)
+        if work["tt_meta"][slot] == 0 or work["tt_key"][slot] != key:
+            return
+        guess = int(work["tt_move"][slot])
+        if guess == 0:
+            return
+        reply = chess.Move.from_uci(jit_move_uci(guess))
+        if reply not in board_obj.legal_moves:
+            return
+        board_obj.push(reply)
+        if board_obj.is_game_over():
+            return
+
+        rep_keys = []
+        for past in HISTORY_FENS[-78:]:
+            past_board, past_st = jit_new_state(past)
+            rep_keys.append(jit_full_hash(past_board, past_st))
+        after_ours, after_ours_st = jit_new_state(board_obj.fen())
+        rep_keys.append(jit_full_hash(after_ours, after_ours_st))
+
+        PONDER["stop"] = False
+        PONDER["fen"] = board_obj.fen()
+        PONDER["tries"] += 1
+        thread = threading.Thread(target=_ponder_run, args=(board_obj.fen(), rep_keys),
+                                  daemon=True)
+        PONDER["thread"] = thread
+        thread.start()
+    except Exception:
+        PONDER["thread"] = None
+
+
+
 
 def _jit_warmup() -> None:
     """Compile everything by running a tiny search. This runs on a worker thread so that
@@ -2524,6 +2721,16 @@ def _jit_choose(fen: str, time_left_ms: int) -> str:
 
 def get_move(fen: str, time_left_ms: int) -> str:
     """Return a legal move in UCI notation for the side to move in `fen`."""
+    # First, before anything reads the shared workspace: stop the background search that
+    # has been running on the opponent's clock. Everything below assumes it has finished.
+    if not _ponder_stop():
+        # It would not let go of the workspace, which should not be reachable given
+        # node-capped slices. Play from the pure-Python engine, which shares none of
+        # those arrays, rather than racing a thread for them.
+        return _python_get_move(fen, time_left_ms)
+    if PONDER["fen"] == fen:
+        PONDER["hits"] += 1
+
     board = chess.Board(fen)
     moves = list(board.legal_moves)
     if not moves:
@@ -2552,6 +2759,8 @@ def get_move(fen: str, time_left_ms: int) -> str:
 
         uci = _jit_choose(fen, time_left_ms)
         if uci and chess.Move.from_uci(uci) in moves:
+            # Hand the spare core to the position we expect to be asked about next.
+            _ponder_start(fen, chess.Move.from_uci(uci))
             return uci
         return _python_get_move(fen, time_left_ms)
     except Exception as exc:  # never lose a game to an unhandled error

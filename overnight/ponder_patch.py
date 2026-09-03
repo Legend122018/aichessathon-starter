@@ -43,15 +43,24 @@ PONDER_SLICE_NODES = 40000
 PONDER_MAX_SLICES = 400
 
 
-def _ponder_stop() -> None:
-    """Halt the background search and wait for it. Called before anything else touches
-    the shared workspace, so the two searches never run at the same time."""
+def _ponder_stop() -> bool:
+    """Halt the background search and wait for it to actually finish.
+
+    Returns False if it did not stop. That answer matters: a thread still inside
+    jit_search_root is still writing to every array the real search is about to use, and
+    two searches sharing one workspace produce a move that belongs to neither. The
+    handle is deliberately left set in that case, because the thread still owns the
+    workspace, and the caller plays the move from the pure-Python engine instead.
+    """
     thread = PONDER["thread"]
     if thread is None:
-        return
+        return True
     PONDER["stop"] = True
     thread.join(timeout=2.0)
+    if thread.is_alive():
+        return False
     PONDER["thread"] = None
+    return True
 
 
 def _ponder_run(fen: str, rep_keys: list[int]) -> None:
@@ -114,7 +123,7 @@ def _ponder_start(fen: str, played: Any) -> None:
     principal variation would give, without having to keep one.
     """
     try:
-        if not JIT_READY:
+        if not JIT_READY or PONDER["thread"] is not None:
             return
         board_obj = chess.Board(fen)
         board_obj.push(played)
@@ -170,7 +179,11 @@ GET_MOVE_NEW = '''def get_move(fen: str, time_left_ms: int) -> str:
     """Return a legal move in UCI notation for the side to move in `fen`."""
     # First, before anything reads the shared workspace: stop the background search that
     # has been running on the opponent's clock. Everything below assumes it has finished.
-    _ponder_stop()
+    if not _ponder_stop():
+        # It would not let go of the workspace, which should not be reachable given
+        # node-capped slices. Play from the pure-Python engine, which shares none of
+        # those arrays, rather than racing a thread for them.
+        return _python_get_move(fen, time_left_ms)
     if PONDER["fen"] == fen:
         PONDER["hits"] += 1
 
