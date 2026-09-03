@@ -1,0 +1,838 @@
+
+
+===== run started 2026-09-01 02:57 =====
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\gen.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data --games 6000 --workers 30 --seed 1
+30 workers x 200 games -> C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data
+  worker 0: game 0/200, 122 positions
+  worker 0: game 50/200, 4052 positions
+  worker 0: game 100/200, 8061 positions
+  worker 0: game 150/200, 12131 positions
+505,112 new positions in 1.8 min (4631/s), 76 data files total
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tune.py --data C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data --agent C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r1.py --steps 6000 --limit 4000000
+feature check: worst disagreement 1.87 cp over 300 positions
+featurising positions...
+  featurised 100000
+  featurised 200000
+  featurised 300000
+  featurised 400000
+  featurised 500000
+510672 positions, 789 parameters
+sigmoid scale K = 430   starting loss 0.013254
+  step   250/6000  validation 0.011878  (53s)
+  step   500/6000  validation 0.011830  (53s)
+  step   750/6000  validation 0.011800  (54s)
+  step  1000/6000  validation 0.011788  (55s)
+  step  1250/6000  validation 0.011759  (55s)
+  step  1500/6000  validation 0.011758  (56s)
+  step  1750/6000  validation 0.011738  (56s)
+  step  2000/6000  validation 0.011748  (57s)
+  step  2250/6000  validation 0.011749  (57s)
+  step  2500/6000  validation 0.011736  (58s)
+  step  2750/6000  validation 0.011747  (59s)
+  step  3000/6000  validation 0.011738  (59s)
+  step  3250/6000  validation 0.011735  (60s)
+  step  3500/6000  validation 0.011741  (60s)
+  step  3750/6000  validation 0.011738  (61s)
+  step  4000/6000  validation 0.011742  (62s)
+  step  4250/6000  validation 0.011745  (62s)
+  step  4500/6000  validation 0.011746  (63s)
+  step  4750/6000  validation 0.011749  (63s)
+  step  5000/6000  validation 0.011757  (64s)
+  step  5250/6000  validation 0.011757  (64s)
+  step  5500/6000  validation 0.011766  (65s)
+  step  5750/6000  validation 0.011768  (66s)
+  step  6000/6000  validation 0.011769  (66s)
+best validation 0.011735 (started 0.013254, +11.5%)
+wrote C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r1.py
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\apply_tables.py --agent C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --tables C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r1.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r1.py --tune-dir C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight
+patched engine matches tuned parameters to 0.92 cp
+wrote C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r1.py
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\match.py --candidate C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r1.py --champion C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --workers 15 --smt-stride 2 --base-ms 8000 --inc-ms 80 --max-games 1200 --seed 1
+15 concurrent games, one per physical core (16 physical / 32 logical)
+SPRT [0.0, 8.0] bounds [-2.94, 2.94]
+     60 games  +20 =11 -29  elo -53 +/- 91  LLR -0.28  (2 min)
+    120 games  +40 =23 -57  elo -50 +/- 64  LLR -0.54  (5 min)
+    180 games  +60 =39 -81  elo -41 +/- 51  LLR -0.69  (7 min)
+    240 games  +75 =58 -107  elo -47 +/- 45  LLR -1.08  (10 min)
+    300 games  +96 =74 -130  elo -40 +/- 40  LLR -1.16  (12 min)
+    360 games  +117 =92 -151  elo -33 +/- 36  LLR -1.19  (15 min)
+    420 games  +134 =108 -178  elo -37 +/- 34  LLR -1.54  (17 min)
+    480 games  +156 =117 -207  elo -37 +/- 31  LLR -1.75  (19 min)
+    540 games  +178 =130 -232  elo -35 +/- 30  LLR -1.85  (22 min)
+    600 games  +202 =141 -257  elo -32 +/- 28  LLR -1.88  (24 min)
+    660 games  +224 =156 -280  elo -30 +/- 27  LLR -1.94  (27 min)
+    720 games  +241 =173 -306  elo -31 +/- 26  LLR -2.24  (29 min)
+    780 games  +265 =187 -328  elo -28 +/- 25  LLR -2.20  (31 min)
+    840 games  +284 =205 -351  elo -28 +/- 24  LLR -2.35  (34 min)
+    900 games  +305 =220 -375  elo -27 +/- 23  LLR -2.47  (36 min)
+    960 games  +326 =238 -396  elo -25 +/- 22  LLR -2.50  (39 min)
+   1020 games  +344 =258 -418  elo -25 +/- 21  LLR -2.66  (41 min)
+   1080 games  +363 =269 -448  elo -27 +/- 21  LLR -3.01  (43 min)
+SPRT: no improvement - reject
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\gen.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data --games 6000 --workers 30 --seed 2
+30 workers x 200 games -> C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data
+  worker 0: game 0/200, 93 positions
+  worker 0: game 50/200, 4296 positions
+  worker 0: game 100/200, 8489 positions
+  worker 0: game 150/200, 13036 positions
+510,618 new positions in 1.8 min (4643/s), 106 data files total
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tune.py --data C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data --agent C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r2.py --steps 6000 --limit 4000000
+feature check: worst disagreement 1.87 cp over 300 positions
+featurising positions...
+  featurised 100000
+  featurised 200000
+  featurised 300000
+  featurised 400000
+  featurised 500000
+  featurised 600000
+  featurised 700000
+  featurised 800000
+  featurised 900000
+  featurised 1000000
+1021290 positions, 789 parameters
+sigmoid scale K = 430   starting loss 0.013321
+  step   250/6000  validation 0.012203  (86s)
+  step   500/6000  validation 0.012175  (87s)
+  step   750/6000  validation 0.012140  (87s)
+  step  1000/6000  validation 0.012124  (88s)
+  step  1250/6000  validation 0.012120  (89s)
+  step  1500/6000  validation 0.012101  (90s)
+  step  1750/6000  validation 0.012086  (90s)
+  step  2000/6000  validation 0.012083  (91s)
+  step  2250/6000  validation 0.012088  (92s)
+  step  2500/6000  validation 0.012086  (93s)
+  step  2750/6000  validation 0.012086  (93s)
+  step  3000/6000  validation 0.012081  (94s)
+  step  3250/6000  validation 0.012076  (95s)
+  step  3500/6000  validation 0.012086  (96s)
+  step  3750/6000  validation 0.012083  (97s)
+  step  4000/6000  validation 0.012085  (97s)
+  step  4250/6000  validation 0.012090  (98s)
+  step  4500/6000  validation 0.012086  (99s)
+  step  4750/6000  validation 0.012091  (100s)
+  step  5000/6000  validation 0.012097  (100s)
+  step  5250/6000  validation 0.012101  (101s)
+  step  5500/6000  validation 0.012107  (102s)
+  step  5750/6000  validation 0.012105  (103s)
+  step  6000/6000  validation 0.012111  (103s)
+best validation 0.012076 (started 0.013321, +9.3%)
+wrote C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r2.py
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\apply_tables.py --agent C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --tables C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r2.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r2.py --tune-dir C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight
+patched engine matches tuned parameters to 0.96 cp
+wrote C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r2.py
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\match.py --candidate C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r2.py --champion C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --workers 15 --smt-stride 2 --base-ms 8000 --inc-ms 80 --max-games 1200 --seed 2
+15 concurrent games, one per physical core (16 physical / 32 logical)
+SPRT [0.0, 8.0] bounds [-2.94, 2.94]
+     60 games  +25 =11 -24  elo +6 +/- 90  LLR +0.01  (3 min)
+    120 games  +49 =25 -46  elo +9 +/- 63  LLR +0.05  (5 min)
+    180 games  +73 =39 -68  elo +10 +/- 51  LLR +0.09  (7 min)
+    240 games  +102 =51 -87  elo +22 +/- 44  LLR +0.36  (10 min)
+    300 games  +126 =66 -108  elo +21 +/- 40  LLR +0.43  (12 min)
+    360 games  +145 =84 -131  elo +14 +/- 36  LLR +0.30  (15 min)
+    420 games  +166 =102 -152  elo +12 +/- 33  LLR +0.28  (17 min)
+    480 games  +187 =115 -178  elo +7 +/- 31  LLR +0.11  (19 min)
+    540 games  +216 =124 -200  elo +10 +/- 29  LLR +0.29  (22 min)
+    600 games  +243 =128 -229  elo +8 +/- 28  LLR +0.21  (24 min)
+    660 games  +265 =143 -252  elo +7 +/- 27  LLR +0.16  (27 min)
+    720 games  +286 =156 -278  elo +4 +/- 25  LLR -0.01  (29 min)
+    780 games  +302 =171 -307  elo -2 +/- 24  LLR -0.41  (32 min)
+    840 games  +320 =181 -339  elo -8 +/- 24  LLR -0.84  (34 min)
+    900 games  +343 =194 -363  elo -8 +/- 23  LLR -0.89  (36 min)
+    960 games  +368 =207 -385  elo -6 +/- 22  LLR -0.82  (39 min)
+   1020 games  +387 =223 -410  elo -8 +/- 21  LLR -1.02  (41 min)
+   1080 games  +409 =236 -435  elo -8 +/- 21  LLR -1.13  (43 min)
+   1140 games  +432 =245 -463  elo -9 +/- 20  LLR -1.30  (46 min)
+   1200 games  +452 =261 -487  elo -10 +/- 20  LLR -1.44  (48 min)
+SPRT: inconclusive at the game limit - reject to be safe
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\gen.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data --games 6000 --workers 30 --seed 3
+30 workers x 200 games -> C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data
+  worker 0: game 0/200, 172 positions
+  worker 0: game 50/200, 4621 positions
+498,073 new positions in 1.8 min (4709/s), 136 data files total
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tune.py --data C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data --agent C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r3.py --steps 6000 --limit 4000000
+feature check: worst disagreement 1.87 cp over 300 positions
+featurising positions...
+  featurised 100000
+  featurised 200000
+  featurised 300000
+  featurised 400000
+  featurised 500000
+  featurised 600000
+  featurised 700000
+  featurised 800000
+  featurised 900000
+  featurised 1000000
+  featurised 1100000
+  featurised 1200000
+  featurised 1300000
+  featurised 1400000
+  featurised 1500000
+1519363 positions, 789 parameters
+sigmoid scale K = 430   starting loss 0.013333
+  step   250/6000  validation 0.012274  (124s)
+  step   500/6000  validation 0.012231  (125s)
+  step   750/6000  validation 0.012195  (126s)
+  step  1000/6000  validation 0.012176  (127s)
+  step  1250/6000  validation 0.012176  (127s)
+  step  1500/6000  validation 0.012174  (128s)
+  step  1750/6000  validation 0.012146  (129s)
+  step  2000/6000  validation 0.012146  (129s)
+  step  2250/6000  validation 0.012145  (130s)
+  step  2500/6000  validation 0.012143  (131s)
+  step  2750/6000  validation 0.012145  (132s)
+  step  3000/6000  validation 0.012139  (132s)
+  step  3250/6000  validation 0.012136  (133s)
+  step  3500/6000  validation 0.012144  (134s)
+  step  3750/6000  validation 0.012143  (134s)
+  step  4000/6000  validation 0.012146  (135s)
+  step  4250/6000  validation 0.012150  (136s)
+  step  4500/6000  validation 0.012155  (136s)
+  step  4750/6000  validation 0.012155  (137s)
+  step  5000/6000  validation 0.012161  (138s)
+  step  5250/6000  validation 0.012166  (139s)
+  step  5500/6000  validation 0.012168  (139s)
+  step  5750/6000  validation 0.012174  (140s)
+  step  6000/6000  validation 0.012174  (141s)
+best validation 0.012136 (started 0.013333, +9.0%)
+wrote C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r3.py
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\apply_tables.py --agent C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --tables C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r3.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r3.py --tune-dir C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight
+patched engine matches tuned parameters to 0.96 cp
+wrote C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r3.py
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\match.py --candidate C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r3.py --champion C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --workers 15 --smt-stride 2 --base-ms 8000 --inc-ms 80 --max-games 1200 --seed 3
+15 concurrent games, one per physical core (16 physical / 32 logical)
+SPRT [0.0, 8.0] bounds [-2.94, 2.94]
+     60 games  +16 =13 -31  elo -89 +/- 93  LLR -0.50  (2 min)
+    120 games  +34 =33 -53  elo -55 +/- 64  LLR -0.67  (5 min)
+    180 games  +53 =53 -74  elo -41 +/- 51  LLR -0.77  (7 min)
+    240 games  +76 =71 -93  elo -25 +/- 44  LLR -0.65  (10 min)
+    300 games  +98 =84 -118  elo -23 +/- 40  LLR -0.75  (12 min)
+    360 games  +126 =96 -138  elo -12 +/- 36  LLR -0.51  (15 min)
+    420 games  +143 =117 -160  elo -14 +/- 33  LLR -0.70  (17 min)
+    480 games  +163 =130 -187  elo -17 +/- 31  LLR -0.94  (19 min)
+    540 games  +188 =146 -206  elo -12 +/- 29  LLR -0.77  (22 min)
+    600 games  +209 =163 -228  elo -11 +/- 28  LLR -0.82  (24 min)
+    660 games  +230 =172 -258  elo -15 +/- 27  LLR -1.11  (26 min)
+    720 games  +249 =189 -282  elo -16 +/- 25  LLR -1.29  (29 min)
+    780 games  +269 =208 -303  elo -15 +/- 24  LLR -1.35  (31 min)
+    840 games  +291 =222 -327  elo -15 +/- 24  LLR -1.43  (34 min)
+    900 games  +315 =233 -352  elo -14 +/- 23  LLR -1.47  (36 min)
+    960 games  +346 =241 -373  elo -10 +/- 22  LLR -1.17  (38 min)
+   1020 games  +371 =254 -395  elo -8 +/- 21  LLR -1.10  (41 min)
+   1080 games  +393 =268 -419  elo -8 +/- 21  LLR -1.18  (43 min)
+   1140 games  +418 =279 -443  elo -8 +/- 20  LLR -1.16  (46 min)
+   1200 games  +438 =301 -461  elo -7 +/- 20  LLR -1.13  (48 min)
+SPRT: inconclusive at the game limit - reject to be safe
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\gen.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data --games 6000 --workers 30 --seed 4
+30 workers x 200 games -> C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data
+  worker 0: game 0/200, 166 positions
+  worker 0: game 100/200, 9256 positions
+  worker 0: game 150/200, 13885 positions
+504,833 new positions in 1.7 min (4943/s), 166 data files total
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tune.py --data C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data --agent C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r4.py --steps 6000 --limit 4000000
+feature check: worst disagreement 1.87 cp over 300 positions
+featurising positions...
+  featurised 100000
+  featurised 200000
+  featurised 300000
+  featurised 400000
+  featurised 500000
+  featurised 600000
+  featurised 700000
+  featurised 800000
+  featurised 900000
+  featurised 1000000
+  featurised 1100000
+  featurised 1200000
+  featurised 1300000
+  featurised 1400000
+  featurised 1500000
+  featurised 1600000
+  featurised 1700000
+  featurised 1800000
+  featurised 1900000
+  featurised 2000000
+2024196 positions, 789 parameters
+sigmoid scale K = 430   starting loss 0.013276
+  step   250/6000  validation 0.012205  (157s)
+  step   500/6000  validation 0.012164  (158s)
+  step   750/6000  validation 0.012130  (159s)
+  step  1000/6000  validation 0.012117  (159s)
+  step  1250/6000  validation 0.012105  (160s)
+  step  1500/6000  validation 0.012094  (161s)
+  step  1750/6000  validation 0.012076  (162s)
+  step  2000/6000  validation 0.012080  (162s)
+  step  2250/6000  validation 0.012080  (163s)
+  step  2500/6000  validation 0.012079  (164s)
+  step  2750/6000  validation 0.012077  (164s)
+  step  3000/6000  validation 0.012079  (165s)
+  step  3250/6000  validation 0.012073  (166s)
+  step  3500/6000  validation 0.012076  (166s)
+  step  3750/6000  validation 0.012073  (167s)
+  step  4000/6000  validation 0.012082  (168s)
+  step  4250/6000  validation 0.012079  (168s)
+  step  4500/6000  validation 0.012081  (169s)
+  step  4750/6000  validation 0.012085  (170s)
+  step  5000/6000  validation 0.012087  (170s)
+  step  5250/6000  validation 0.012092  (171s)
+  step  5500/6000  validation 0.012095  (172s)
+  step  5750/6000  validation 0.012103  (173s)
+  step  6000/6000  validation 0.012104  (173s)
+best validation 0.012073 (started 0.013276, +9.1%)
+wrote C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r4.py
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\apply_tables.py --agent C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --tables C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r4.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r4.py --tune-dir C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight
+patched engine matches tuned parameters to 0.96 cp
+wrote C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r4.py
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\match.py --candidate C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r4.py --champion C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --workers 15 --smt-stride 2 --base-ms 8000 --inc-ms 80 --max-games 1200 --seed 4
+15 concurrent games, one per physical core (16 physical / 32 logical)
+SPRT [0.0, 8.0] bounds [-2.94, 2.94]
+     60 games  +20 =13 -27  elo -41 +/- 91  LLR -0.23  (3 min)
+    120 games  +41 =23 -56  elo -44 +/- 63  LLR -0.48  (5 min)
+    180 games  +62 =42 -76  elo -27 +/- 51  LLR -0.49  (7 min)
+    240 games  +83 =58 -99  elo -23 +/- 44  LLR -0.57  (10 min)
+    300 games  +114 =69 -117  elo -3 +/- 39  LLR -0.19  (12 min)
+    360 games  +136 =85 -139  elo -3 +/- 36  LLR -0.22  (14 min)
+    420 games  +161 =102 -157  elo +3 +/- 33  LLR -0.03  (17 min)
+    480 games  +187 =114 -179  elo +6 +/- 31  LLR +0.07  (19 min)
+    540 games  +209 =135 -196  elo +8 +/- 29  LLR +0.21  (22 min)
+    600 games  +235 =153 -212  elo +13 +/- 28  LLR +0.50  (24 min)
+    660 games  +259 =171 -230  elo +15 +/- 27  LLR +0.67  (26 min)
+    720 games  +282 =190 -248  elo +16 +/- 25  LLR +0.81  (29 min)
+    780 games  +309 =201 -270  elo +17 +/- 24  LLR +0.93  (31 min)
+    840 games  +333 =221 -286  elo +19 +/- 24  LLR +1.17  (33 min)
+    900 games  +356 =236 -308  elo +19 +/- 23  LLR +1.18  (36 min)
+    960 games  +380 =246 -334  elo +17 +/- 22  LLR +1.09  (38 min)
+   1020 games  +406 =259 -355  elo +17 +/- 21  LLR +1.22  (41 min)
+   1080 games  +425 =274 -381  elo +14 +/- 21  LLR +0.98  (43 min)
+   1140 games  +446 =288 -406  elo +12 +/- 20  LLR +0.83  (46 min)
+   1200 games  +468 =304 -428  elo +12 +/- 20  LLR +0.81  (48 min)
+SPRT: inconclusive at the game limit - reject to be safe
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\gen.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data --games 6000 --workers 30 --seed 5
+30 workers x 200 games -> C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data
+  worker 0: game 0/200, 83 positions
+  worker 0: game 50/200, 4503 positions
+  worker 0: game 100/200, 8397 positions
+  worker 0: game 150/200, 12136 positions
+502,370 new positions in 1.8 min (4709/s), 196 data files total
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tune.py --data C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data --agent C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r5.py --steps 6000 --limit 4000000
+feature check: worst disagreement 1.87 cp over 300 positions
+featurising positions...
+  featurised 100000
+  featurised 200000
+  featurised 300000
+  featurised 400000
+  featurised 500000
+  featurised 600000
+  featurised 700000
+  featurised 800000
+  featurised 900000
+  featurised 1000000
+  featurised 1100000
+  featurised 1200000
+  featurised 1300000
+  featurised 1400000
+  featurised 1500000
+  featurised 1600000
+  featurised 1700000
+  featurised 1800000
+  featurised 1900000
+  featurised 2000000
+  featurised 2100000
+  featurised 2200000
+  featurised 2300000
+  featurised 2400000
+  featurised 2500000
+2526566 positions, 789 parameters
+sigmoid scale K = 430   starting loss 0.013298
+  step   250/6000  validation 0.012240  (183s)
+  step   500/6000  validation 0.012200  (184s)
+  step   750/6000  validation 0.012167  (185s)
+  step  1000/6000  validation 0.012151  (185s)
+  step  1250/6000  validation 0.012131  (186s)
+  step  1500/6000  validation 0.012131  (187s)
+  step  1750/6000  validation 0.012114  (187s)
+  step  2000/6000  validation 0.012116  (188s)
+  step  2250/6000  validation 0.012106  (189s)
+  step  2500/6000  validation 0.012108  (190s)
+  step  2750/6000  validation 0.012111  (190s)
+  step  3000/6000  validation 0.012108  (191s)
+  step  3250/6000  validation 0.012105  (192s)
+  step  3500/6000  validation 0.012106  (192s)
+  step  3750/6000  validation 0.012110  (193s)
+  step  4000/6000  validation 0.012107  (194s)
+  step  4250/6000  validation 0.012115  (194s)
+  step  4500/6000  validation 0.012116  (195s)
+  step  4750/6000  validation 0.012120  (196s)
+  step  5000/6000  validation 0.012127  (197s)
+  step  5250/6000  validation 0.012129  (197s)
+  step  5500/6000  validation 0.012136  (198s)
+  step  5750/6000  validation 0.012136  (199s)
+  step  6000/6000  validation 0.012141  (199s)
+best validation 0.012105 (started 0.013298, +9.0%)
+wrote C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r5.py
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\apply_tables.py --agent C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --tables C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r5.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r5.py --tune-dir C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight
+patched engine matches tuned parameters to 0.96 cp
+wrote C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r5.py
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\match.py --candidate C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r5.py --champion C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --workers 15 --smt-stride 2 --base-ms 8000 --inc-ms 80 --max-games 1200 --seed 5
+15 concurrent games, one per physical core (16 physical / 32 logical)
+SPRT [0.0, 8.0] bounds [-2.94, 2.94]
+     60 games  +25 =17 -18  elo +41 +/- 91  LLR +0.21  (2 min)
+    120 games  +49 =36 -35  elo +41 +/- 63  LLR +0.42  (5 min)
+    180 games  +74 =50 -56  elo +35 +/- 51  LLR +0.51  (7 min)
+    240 games  +92 =67 -81  elo +16 +/- 44  LLR +0.26  (10 min)
+    300 games  +112 =87 -101  elo +13 +/- 40  LLR +0.25  (12 min)
+    360 games  +131 =107 -122  elo +9 +/- 36  LLR +0.16  (14 min)
+    420 games  +148 =126 -146  elo +2 +/- 33  LLR -0.09  (17 min)
+    480 games  +169 =144 -167  elo +1 +/- 31  LLR -0.12  (19 min)
+    540 games  +196 =155 -189  elo +5 +/- 29  LLR +0.03  (22 min)
+    600 games  +218 =171 -211  elo +4 +/- 28  LLR +0.00  (24 min)
+    660 games  +235 =194 -231  elo +2 +/- 27  LLR -0.12  (27 min)
+    720 games  +259 =207 -254  elo +2 +/- 25  LLR -0.11  (29 min)
+    780 games  +285 =218 -277  elo +4 +/- 24  LLR -0.03  (32 min)
+    840 games  +313 =229 -298  elo +6 +/- 24  LLR +0.17  (34 min)
+    900 games  +334 =244 -322  elo +5 +/- 23  LLR +0.05  (36 min)
+    960 games  +351 =265 -344  elo +3 +/- 22  LLR -0.13  (39 min)
+   1020 games  +372 =287 -361  elo +4 +/- 21  LLR -0.02  (41 min)
+   1080 games  +394 =310 -376  elo +6 +/- 21  LLR +0.18  (44 min)
+   1140 games  +415 =328 -397  elo +5 +/- 20  LLR +0.16  (46 min)
+   1200 games  +442 =344 -414  elo +8 +/- 20  LLR +0.46  (48 min)
+SPRT: inconclusive at the game limit - reject to be safe
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\gen.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data --games 6000 --workers 30 --seed 6
+30 workers x 200 games -> C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data
+  worker 0: game 0/200, 107 positions
+  worker 0: game 50/200, 4453 positions
+  worker 0: game 100/200, 8901 positions
+  worker 0: game 150/200, 12911 positions
+506,351 new positions in 1.7 min (4844/s), 226 data files total
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tune.py --data C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data --agent C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r6.py --steps 6000 --limit 4000000
+feature check: worst disagreement 1.87 cp over 300 positions
+featurising positions...
+  featurised 100000
+  featurised 200000
+  featurised 300000
+  featurised 400000
+  featurised 500000
+  featurised 600000
+  featurised 700000
+  featurised 800000
+  featurised 900000
+  featurised 1000000
+  featurised 1100000
+  featurised 1200000
+  featurised 1300000
+  featurised 1400000
+  featurised 1500000
+  featurised 1600000
+  featurised 1700000
+  featurised 1800000
+  featurised 1900000
+  featurised 2000000
+  featurised 2100000
+  featurised 2200000
+  featurised 2300000
+  featurised 2400000
+  featurised 2500000
+  featurised 2600000
+  featurised 2700000
+  featurised 2800000
+  featurised 2900000
+  featurised 3000000
+3032917 positions, 789 parameters
+sigmoid scale K = 430   starting loss 0.013319
+  step   250/6000  validation 0.012277  (216s)
+  step   500/6000  validation 0.012239  (217s)
+  step   750/6000  validation 0.012217  (218s)
+  step  1000/6000  validation 0.012195  (218s)
+  step  1250/6000  validation 0.012181  (219s)
+  step  1500/6000  validation 0.012168  (220s)
+  step  1750/6000  validation 0.012155  (221s)
+  step  2000/6000  validation 0.012153  (221s)
+  step  2250/6000  validation 0.012152  (222s)
+  step  2500/6000  validation 0.012152  (223s)
+  step  2750/6000  validation 0.012151  (224s)
+  step  3000/6000  validation 0.012149  (224s)
+  step  3250/6000  validation 0.012143  (225s)
+  step  3500/6000  validation 0.012149  (226s)
+  step  3750/6000  validation 0.012153  (226s)
+  step  4000/6000  validation 0.012152  (227s)
+  step  4250/6000  validation 0.012155  (228s)
+  step  4500/6000  validation 0.012160  (229s)
+  step  4750/6000  validation 0.012163  (229s)
+  step  5000/6000  validation 0.012167  (230s)
+  step  5250/6000  validation 0.012170  (231s)
+  step  5500/6000  validation 0.012171  (232s)
+  step  5750/6000  validation 0.012175  (232s)
+  step  6000/6000  validation 0.012181  (233s)
+best validation 0.012143 (started 0.013319, +8.8%)
+wrote C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r6.py
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\apply_tables.py --agent C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --tables C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r6.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r6.py --tune-dir C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight
+patched engine matches tuned parameters to 0.96 cp
+wrote C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r6.py
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\match.py --candidate C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r6.py --champion C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --workers 15 --smt-stride 2 --base-ms 8000 --inc-ms 80 --max-games 1200 --seed 6
+15 concurrent games, one per physical core (16 physical / 32 logical)
+SPRT [0.0, 8.0] bounds [-2.94, 2.94]
+     60 games  +22 =17 -21  elo +6 +/- 90  LLR +0.01  (2 min)
+    120 games  +43 =38 -39  elo +12 +/- 63  LLR +0.09  (5 min)
+    180 games  +74 =50 -56  elo +35 +/- 51  LLR +0.51  (7 min)
+    240 games  +103 =68 -69  elo +50 +/- 45  LLR +1.03  (10 min)
+    300 games  +129 =80 -91  elo +44 +/- 40  LLR +1.11  (12 min)
+    360 games  +157 =94 -109  elo +47 +/- 36  LLR +1.40  (14 min)
+    420 games  +183 =106 -131  elo +43 +/- 34  LLR +1.48  (17 min)
+    480 games  +205 =120 -155  elo +36 +/- 31  LLR +1.39  (19 min)
+    540 games  +227 =132 -181  elo +30 +/- 29  LLR +1.22  (22 min)
+    600 games  +250 =152 -198  elo +30 +/- 28  LLR +1.40  (24 min)
+    660 games  +279 =162 -219  elo +32 +/- 27  LLR +1.62  (26 min)
+    720 games  +303 =178 -239  elo +31 +/- 26  LLR +1.72  (29 min)
+    780 games  +332 =187 -261  elo +32 +/- 25  LLR +1.90  (31 min)
+    840 games  +361 =202 -277  elo +35 +/- 24  LLR +2.28  (33 min)
+    900 games  +381 =215 -304  elo +30 +/- 23  LLR +2.04  (36 min)
+    960 games  +406 =229 -325  elo +29 +/- 22  LLR +2.13  (38 min)
+   1020 games  +434 =247 -339  elo +32 +/- 21  LLR +2.56  (40 min)
+   1080 games  +454 =262 -364  elo +29 +/- 21  LLR +2.38  (43 min)
+   1140 games  +475 =276 -389  elo +26 +/- 20  LLR +2.23  (45 min)
+   1200 games  +503 =289 -408  elo +28 +/- 20  LLR +2.48  (48 min)
+SPRT: inconclusive at the game limit - reject to be safe
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\gen.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data --games 6000 --workers 30 --seed 7
+30 workers x 200 games -> C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data
+  worker 0: game 0/200, 83 positions
+  worker 0: game 50/200, 4056 positions
+  worker 0: game 100/200, 8362 positions
+  worker 0: game 150/200, 12623 positions
+509,461 new positions in 1.7 min (4889/s), 256 data files total
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tune.py --data C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data --agent C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r7.py --steps 6000 --limit 4000000
+feature check: worst disagreement 1.87 cp over 300 positions
+featurising positions...
+  featurised 100000
+  featurised 200000
+  featurised 300000
+  featurised 400000
+  featurised 500000
+  featurised 600000
+  featurised 700000
+  featurised 800000
+  featurised 900000
+  featurised 1000000
+  featurised 1100000
+  featurised 1200000
+  featurised 1300000
+  featurised 1400000
+  featurised 1500000
+  featurised 1600000
+  featurised 1700000
+  featurised 1800000
+  featurised 1900000
+  featurised 2000000
+  featurised 2100000
+  featurised 2200000
+  featurised 2300000
+  featurised 2400000
+  featurised 2500000
+  featurised 2600000
+  featurised 2700000
+  featurised 2800000
+  featurised 2900000
+  featurised 3000000
+  featurised 3100000
+  featurised 3200000
+  featurised 3300000
+  featurised 3400000
+  featurised 3500000
+3542378 positions, 789 parameters
+sigmoid scale K = 430   starting loss 0.013350
+  step   250/6000  validation 0.012304  (250s)
+  step   500/6000  validation 0.012267  (251s)
+  step   750/6000  validation 0.012241  (251s)
+  step  1000/6000  validation 0.012213  (252s)
+  step  1250/6000  validation 0.012202  (253s)
+  step  1500/6000  validation 0.012192  (254s)
+  step  1750/6000  validation 0.012173  (254s)
+  step  2000/6000  validation 0.012174  (255s)
+  step  2250/6000  validation 0.012177  (256s)
+  step  2500/6000  validation 0.012173  (257s)
+  step  2750/6000  validation 0.012173  (257s)
+  step  3000/6000  validation 0.012169  (258s)
+  step  3250/6000  validation 0.012167  (259s)
+  step  3500/6000  validation 0.012170  (260s)
+  step  3750/6000  validation 0.012172  (260s)
+  step  4000/6000  validation 0.012177  (261s)
+  step  4250/6000  validation 0.012179  (262s)
+  step  4500/6000  validation 0.012183  (263s)
+  step  4750/6000  validation 0.012182  (263s)
+  step  5000/6000  validation 0.012188  (264s)
+  step  5250/6000  validation 0.012192  (265s)
+  step  5500/6000  validation 0.012197  (266s)
+  step  5750/6000  validation 0.012201  (266s)
+  step  6000/6000  validation 0.012203  (267s)
+best validation 0.012167 (started 0.013350, +8.9%)
+wrote C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r7.py
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\apply_tables.py --agent C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --tables C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r7.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r7.py --tune-dir C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight
+patched engine matches tuned parameters to 0.96 cp
+wrote C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r7.py
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\match.py --candidate C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r7.py --champion C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --workers 15 --smt-stride 2 --base-ms 8000 --inc-ms 80 --max-games 1200 --seed 7
+15 concurrent games, one per physical core (16 physical / 32 logical)
+SPRT [0.0, 8.0] bounds [-2.94, 2.94]
+     60 games  +28 =17 -15  elo +76 +/- 92  LLR +0.42  (2 min)
+    120 games  +56 =28 -36  elo +58 +/- 64  LLR +0.58  (5 min)
+    180 games  +83 =38 -59  elo +47 +/- 52  LLR +0.65  (7 min)
+    240 games  +108 =53 -79  elo +42 +/- 45  LLR +0.79  (10 min)
+    300 games  +134 =67 -99  elo +41 +/- 40  LLR +0.95  (12 min)
+    360 games  +151 =81 -128  elo +22 +/- 36  LLR +0.56  (14 min)
+    420 games  +177 =101 -142  elo +29 +/- 33  LLR +0.92  (17 min)
+    480 games  +207 =114 -159  elo +35 +/- 31  LLR +1.30  (19 min)
+    540 games  +230 =135 -175  elo +36 +/- 30  LLR +1.52  (22 min)
+    600 games  +255 =148 -197  elo +34 +/- 28  LLR +1.58  (24 min)
+    660 games  +277 =163 -220  elo +30 +/- 27  LLR +1.53  (26 min)
+    720 games  +299 =177 -244  elo +27 +/- 25  LLR +1.44  (29 min)
+    780 games  +325 =187 -268  elo +25 +/- 24  LLR +1.46  (31 min)
+    840 games  +353 =195 -292  elo +25 +/- 24  LLR +1.55  (34 min)
+    900 games  +374 =209 -317  elo +22 +/- 23  LLR +1.41  (36 min)
+    960 games  +393 =228 -339  elo +20 +/- 22  LLR +1.30  (39 min)
+   1020 games  +421 =242 -357  elo +22 +/- 21  LLR +1.59  (41 min)
+   1080 games  +439 =260 -381  elo +19 +/- 21  LLR +1.39  (44 min)
+   1140 games  +467 =275 -398  elo +21 +/- 20  LLR +1.70  (46 min)
+   1200 games  +489 =294 -417  elo +21 +/- 20  LLR +1.78  (49 min)
+SPRT: inconclusive at the game limit - reject to be safe
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\gen.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data --games 6000 --workers 30 --seed 8
+30 workers x 200 games -> C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data
+  worker 0: game 0/200, 88 positions
+  worker 0: game 50/200, 4384 positions
+  worker 0: game 100/200, 8855 positions
+  worker 0: game 150/200, 12963 positions
+504,061 new positions in 1.8 min (4790/s), 286 data files total
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tune.py --data C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data --agent C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r8.py --steps 6000 --limit 4000000
+feature check: worst disagreement 1.87 cp over 300 positions
+featurising positions...
+  featurised 100000
+  featurised 200000
+  featurised 300000
+  featurised 400000
+  featurised 500000
+  featurised 600000
+  featurised 700000
+  featurised 800000
+  featurised 900000
+  featurised 1000000
+  featurised 1100000
+  featurised 1200000
+  featurised 1300000
+  featurised 1400000
+  featurised 1500000
+  featurised 1600000
+  featurised 1700000
+  featurised 1800000
+  featurised 1900000
+  featurised 2000000
+  featurised 2100000
+  featurised 2200000
+  featurised 2300000
+  featurised 2400000
+  featurised 2500000
+  featurised 2600000
+  featurised 2700000
+  featurised 2800000
+  featurised 2900000
+  featurised 3000000
+  featurised 3100000
+  featurised 3200000
+  featurised 3300000
+  featurised 3400000
+  featurised 3500000
+  featurised 3600000
+  featurised 3700000
+  featurised 3800000
+  featurised 3900000
+  featurised 4000000
+4000000 positions, 789 parameters
+sigmoid scale K = 430   starting loss 0.013381
+  step   250/6000  validation 0.012338  (279s)
+  step   500/6000  validation 0.012293  (279s)
+  step   750/6000  validation 0.012268  (280s)
+  step  1000/6000  validation 0.012255  (281s)
+  step  1250/6000  validation 0.012244  (282s)
+  step  1500/6000  validation 0.012225  (282s)
+  step  1750/6000  validation 0.012208  (283s)
+  step  2000/6000  validation 0.012210  (284s)
+  step  2250/6000  validation 0.012207  (285s)
+  step  2500/6000  validation 0.012211  (285s)
+  step  2750/6000  validation 0.012209  (286s)
+  step  3000/6000  validation 0.012210  (287s)
+  step  3250/6000  validation 0.012201  (288s)
+  step  3500/6000  validation 0.012200  (288s)
+  step  3750/6000  validation 0.012206  (289s)
+  step  4000/6000  validation 0.012212  (290s)
+  step  4250/6000  validation 0.012213  (290s)
+  step  4500/6000  validation 0.012214  (291s)
+  step  4750/6000  validation 0.012216  (292s)
+  step  5000/6000  validation 0.012221  (293s)
+  step  5250/6000  validation 0.012225  (293s)
+  step  5500/6000  validation 0.012229  (294s)
+  step  5750/6000  validation 0.012234  (295s)
+  step  6000/6000  validation 0.012238  (296s)
+best validation 0.012200 (started 0.013381, +8.8%)
+wrote C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r8.py
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\apply_tables.py --agent C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --tables C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r8.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r8.py --tune-dir C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight
+patched engine matches tuned parameters to 0.96 cp
+wrote C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r8.py
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\match.py --candidate C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r8.py --champion C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --workers 15 --smt-stride 2 --base-ms 8000 --inc-ms 80 --max-games 1200 --seed 8
+15 concurrent games, one per physical core (16 physical / 32 logical)
+SPRT [0.0, 8.0] bounds [-2.94, 2.94]
+     60 games  +26 =19 -15  elo +64 +/- 92  LLR +0.37  (2 min)
+    120 games  +50 =37 -33  elo +50 +/- 64  LLR +0.54  (5 min)
+    180 games  +70 =58 -52  elo +35 +/- 51  LLR +0.55  (7 min)
+    240 games  +93 =72 -75  elo +26 +/- 44  LLR +0.51  (10 min)
+    300 games  +121 =87 -92  elo +34 +/- 40  LLR +0.84  (12 min)
+    360 games  +143 =102 -115  elo +27 +/- 36  LLR +0.77  (14 min)
+    420 games  +171 =115 -134  elo +31 +/- 33  LLR +1.03  (17 min)
+    480 games  +195 =129 -156  elo +28 +/- 31  LLR +1.06  (19 min)
+    540 games  +219 =149 -172  elo +30 +/- 29  LLR +1.31  (22 min)
+    600 games  +249 =158 -193  elo +33 +/- 28  LLR +1.55  (24 min)
+    660 games  +273 =171 -216  elo +30 +/- 27  LLR +1.55  (27 min)
+    720 games  +297 =185 -238  elo +29 +/- 26  LLR +1.59  (29 min)
+    780 games  +320 =199 -261  elo +26 +/- 24  LLR +1.56  (31 min)
+    840 games  +337 =216 -287  elo +21 +/- 24  LLR +1.26  (34 min)
+    900 games  +360 =227 -313  elo +18 +/- 23  LLR +1.13  (36 min)
+    960 games  +382 =238 -340  elo +15 +/- 22  LLR +0.95  (39 min)
+   1020 games  +405 =253 -362  elo +15 +/- 21  LLR +0.96  (41 min)
+   1080 games  +425 =270 -385  elo +13 +/- 21  LLR +0.85  (44 min)
+   1140 games  +455 =282 -403  elo +16 +/- 20  LLR +1.19  (46 min)
+   1200 games  +487 =288 -425  elo +18 +/- 20  LLR +1.46  (48 min)
+SPRT: inconclusive at the game limit - reject to be safe
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\gen.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data --games 6000 --workers 30 --seed 9
+30 workers x 200 games -> C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data
+  worker 0: game 0/200, 131 positions
+  worker 0: game 50/200, 4603 positions
+  worker 0: game 150/200, 13256 positions
+507,089 new positions in 1.8 min (4696/s), 316 data files total
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tune.py --data C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\data --agent C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r9.py --steps 6000 --limit 4000000
+feature check: worst disagreement 1.87 cp over 300 positions
+featurising positions...
+  featurised 100000
+  featurised 200000
+  featurised 300000
+  featurised 400000
+  featurised 500000
+  featurised 600000
+  featurised 700000
+  featurised 800000
+  featurised 900000
+  featurised 1000000
+  featurised 1100000
+  featurised 1200000
+  featurised 1300000
+  featurised 1400000
+  featurised 1500000
+  featurised 1600000
+  featurised 1700000
+  featurised 1800000
+  featurised 1900000
+  featurised 2000000
+  featurised 2100000
+  featurised 2200000
+  featurised 2300000
+  featurised 2400000
+  featurised 2500000
+  featurised 2600000
+  featurised 2700000
+  featurised 2800000
+  featurised 2900000
+  featurised 3000000
+  featurised 3100000
+  featurised 3200000
+  featurised 3300000
+  featurised 3400000
+  featurised 3500000
+  featurised 3600000
+  featurised 3700000
+  featurised 3800000
+  featurised 3900000
+  featurised 4000000
+4000000 positions, 789 parameters
+sigmoid scale K = 430   starting loss 0.013381
+  step   250/6000  validation 0.012338  (276s)
+  step   500/6000  validation 0.012293  (276s)
+  step   750/6000  validation 0.012268  (277s)
+  step  1000/6000  validation 0.012255  (278s)
+  step  1250/6000  validation 0.012244  (279s)
+  step  1500/6000  validation 0.012225  (279s)
+  step  1750/6000  validation 0.012208  (280s)
+  step  2000/6000  validation 0.012210  (281s)
+  step  2250/6000  validation 0.012207  (281s)
+  step  2500/6000  validation 0.012211  (282s)
+  step  2750/6000  validation 0.012209  (283s)
+  step  3000/6000  validation 0.012210  (284s)
+  step  3250/6000  validation 0.012201  (284s)
+  step  3500/6000  validation 0.012200  (285s)
+  step  3750/6000  validation 0.012206  (286s)
+  step  4000/6000  validation 0.012212  (287s)
+  step  4250/6000  validation 0.012213  (287s)
+  step  4500/6000  validation 0.012214  (288s)
+  step  4750/6000  validation 0.012216  (289s)
+  step  5000/6000  validation 0.012221  (289s)
+  step  5250/6000  validation 0.012225  (290s)
+  step  5500/6000  validation 0.012229  (291s)
+  step  5750/6000  validation 0.012234  (292s)
+  step  6000/6000  validation 0.012238  (292s)
+best validation 0.012200 (started 0.013381, +8.8%)
+wrote C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r9.py
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\apply_tables.py --agent C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --tables C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\tuned_r9.py --out C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r9.py --tune-dir C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight
+patched engine matches tuned parameters to 0.96 cp
+wrote C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r9.py
+
+$ C:\Users\Rohan Sharma\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\match.py --candidate C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\candidate_r9.py --champion C:\Users\Rohan Sharma\PycharmProjects\aichessathon\overnight\champion.py --workers 15 --smt-stride 2 --base-ms 8000 --inc-ms 80 --max-games 1200 --seed 9
+15 concurrent games, one per physical core (16 physical / 32 logical)
+SPRT [0.0, 8.0] bounds [-2.94, 2.94]
+     60 games  +18 =18 -24  elo -35 +/- 90  LLR -0.22  (2 min)
+    120 games  +46 =27 -47  elo -3 +/- 63  LLR -0.07  (5 min)
+    180 games  +74 =37 -69  elo +10 +/- 51  LLR +0.08  (7 min)
+    240 games  +101 =53 -86  elo +22 +/- 44  LLR +0.36  (9 min)
+    300 games  +124 =73 -103  elo +24 +/- 40  LLR +0.54  (12 min)
+    360 games  +147 =89 -124  elo +22 +/- 36  LLR +0.58  (14 min)
+    420 games  +172 =102 -146  elo +22 +/- 33  LLR +0.65  (17 min)
+    480 games  +196 =117 -167  elo +21 +/- 31  LLR +0.72  (19 min)
+    540 games  +212 =136 -192  elo +13 +/- 29  LLR +0.42  (21 min)
+    600 games  +238 =151 -211  elo +16 +/- 28  LLR +0.62  (24 min)
+    660 games  +257 =166 -237  elo +11 +/- 27  LLR +0.38  (26 min)
+    720 games  +283 =182 -255  elo +14 +/- 25  LLR +0.61  (29 min)
+    780 games  +314 =195 -271  elo +19 +/- 24  LLR +1.05  (31 min)
+    840 games  +333 =215 -292  elo +17 +/- 24  LLR +0.97  (33 min)
+    900 games  +348 =233 -319  elo +11 +/- 23  LLR +0.58  (36 min)
+    960 games  +371 =245 -344  elo +10 +/- 22  LLR +0.49  (38 min)
+   1020 games  +389 =265 -366  elo +8 +/- 21  LLR +0.35  (41 min)
+   1080 games  +411 =285 -384  elo +9 +/- 21  LLR +0.46  (43 min)
+   1140 games  +430 =303 -407  elo +7 +/- 20  LLR +0.31  (45 min)
+   1200 games  +464 =312 -424  elo +12 +/- 20  LLR +0.82  (48 min)
+SPRT: inconclusive at the game limit - reject to be safe

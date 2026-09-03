@@ -1,0 +1,13 @@
+14 concurrent games, one per physical core (16 physical / 32 logical)
+SPRT [-5.0, 10.0] bounds [-2.94, 2.94]
+compiling both engines once per worker, then playing continuously
+     40 games  +9 =16 -15  elo -53 +/- 113  LLR -0.47  (2 min)
+     80 games  +18 =26 -36  elo -80 +/- 80  LLR -1.28  (3 min)
+    120 games  +31 =37 -52  elo -61 +/- 64  LLR -1.43  (5 min)
+    160 games  +48 =49 -63  elo -33 +/- 55  LLR -1.02  (6 min)
+    200 games  +67 =57 -76  elo -16 +/- 49  LLR -0.63  (7 min)
+    240 games  +84 =68 -88  elo -6 +/- 44  LLR -0.35  (8 min)
+    280 games  +98 =80 -102  elo -5 +/- 41  LLR -0.36  (9 min)
+    320 games  +113 =91 -116  elo -3 +/- 38  LLR -0.32  (10 min)
+    360 games  +133 =98 -129  elo +4 +/- 36  LLR +0.08  (11 min)
+    400 games  +148 =110 -142  elo +5 +/- 34  LLR +0.19  (12 min)

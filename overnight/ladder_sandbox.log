@@ -1,0 +1,16 @@
+/root/overnight/force_ownpst.py vs Stockfish, 10 games per level, 8s + 0.08s, one core each
+
+ SF UCI_Elo   W   D   L   score  win rate  implied gap   min
+       2200  10   0   0    1.00      100%        +798     4
+       2300   8   0   2    0.80       80%        +241     4
+       2400   6   3   1    0.75       60%        +191     4
+       2500   3   3   4    0.45       30%         -35     4
+       2600   3   3   4    0.45       30%         -35     4
+       2700   3   3   4    0.45       30%         -35     4
+       2800   2   4   4    0.40       20%         -70     4
+       2900   3   3   4    0.45       30%         -35     4
+       3000   0   1   9    0.05        0%        -512     4
+
+score counts draws as a half; win rate does not.
+implied gap is the agent's rating minus Stockfish's setting, from the score.
+Ten games is +/- about 180 Elo per row: read the curve, not the rows.
