@@ -79,8 +79,20 @@ Two things make it safe rather than merely fast:
 
 Measured on the process-per-agent harness that mirrors the platform - one process and one
 core per side, so a background thread cannot win by stealing the core the opponent is
-thinking on - pondering was worth +167 Elo over 56 games at 20 s + 0.2 s, accepted by
-SPRT. `overnight/match_fast.py` cannot measure this honestly and was not used for it.
+thinking on. `overnight/match_fast.py` cannot measure this honestly and was not used.
+
+The gain is real but smaller than it first looked, and the reason is worth recording.
+A first run at 20 s + 0.2 s took +31 =19 -6 over 56 games and crossed an SPRT accept
+bound at +167 Elo. That number is inflated by the stopping rule itself: a test that
+halts as soon as it is winning reports the streak that stopped it. A second run to a
+fixed time limit - stopped for a reason unrelated to its result, so unbiased - took
++77 =48 -57 over 182 games, or +38 +/- 44 Elo. All 238 games pool to +66 +/- 38.
+
+The honest summary is +30 to +40 Elo: positive, the largest single gain in the engine,
+and not conclusively proven at 95% by the unbiased run on its own. What is not in doubt
+is that the mechanism works. Over a match the pondering process accumulates about 1.8x
+the CPU time of its opponent, and the predicted reply is right about four times in five,
+which is the extra thinking the feature exists to buy.
 
 ## Originality
 
