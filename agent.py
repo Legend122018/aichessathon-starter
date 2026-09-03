@@ -187,6 +187,11 @@ ROOK_OPEN_FILE = 54
 ROOK_SEMI_OPEN_FILE = 35
 TEMPO = 12
 
+# A draw we could have avoided is worth this much less than 0 to us, so the search only
+# settles for one when nothing better is on offer. Does not apply to a dead position
+# (insufficient material), where no amount of preference makes a win reachable.
+CONTEMPT = 24
+
 FILE_MASKS = tuple(chess.BB_FILES[chess.square_file(sq)] for sq in range(64))
 
 # Manhattan distance from each square to the centre, for the mop-up term below.
@@ -488,8 +493,9 @@ class TimeUp(Exception):
 class Searcher:
     """One search, holding the clock and the node counter for it."""
 
-    def __init__(self, deadline: float) -> None:
+    def __init__(self, deadline: float, us: chess.Color) -> None:
         self.deadline = deadline
+        self.us = us
         self.nodes = 0
         self.path: list[Hashable] = []
         # Tapered material + piece-square accumulators, white-relative, kept in step
@@ -783,11 +789,17 @@ class Searcher:
         key = board._transposition_key()
 
         # A position we have already stood in, or one repeated inside this search line,
-        # is a draw we should score as one.
+        # is a draw we could have played around. Score it contempt below 0 for whichever
+        # side that is, so the search reaches for it only when nothing better is on offer,
+        # and negamax's own sign flip carries that preference back to the root unchanged
+        # regardless of which ply noticed the repetition.
         if ply and (key in self.path or SEEN.get(key, 0) >= 1):
+            return -CONTEMPT if board.turn == self.us else CONTEMPT
+        # Insufficient material is a draw no preference can undo, so it stays at 0.
+        if board.is_insufficient_material():
             return 0
-        if board.halfmove_clock >= 100 or board.is_insufficient_material():
-            return 0
+        if board.halfmove_clock >= 100:
+            return -CONTEMPT if board.turn == self.us else CONTEMPT
 
         tt_move: chess.Move | None = None
         entry = TT.get(key)
@@ -1018,13 +1030,13 @@ def _python_get_move(fen: str, time_left_ms: int) -> str:
 
         # Under a second on the clock, do not think: a flag loses the game outright.
         if time_left_ms <= PANIC_MS:
-            searcher = Searcher(time.monotonic() + 0.05)
+            searcher = Searcher(time.monotonic() + 0.05, board.turn)
             ordered = searcher.order(board, moves, None, 0)
             return ordered[0].uci()
 
         start = time.monotonic()
         soft, hard = budget_ms(board, time_left_ms)
-        searcher = Searcher(start + hard / 1000.0)
+        searcher = Searcher(start + hard / 1000.0, board.turn)
         searcher.seed(board)
 
         best_move = moves[0]
@@ -1700,7 +1712,8 @@ if HAVE_NUMBA:
 
     JIT_NULL_R = 2
     JIT_DELTA = 200
-    JIT_ASPIRATION = 40
+    JIT_ASPIRATION = 20
+    JIT_CONTEMPT = 24
 
     JIT_MVV_LVA = _np.array([0, 100, 320, 330, 500, 900, 0], dtype=_np.int32)
     JIT_SEE_VALUE = _np.array([0, 100, 320, 330, 500, 900, 20000], dtype=_np.int32)
@@ -1715,7 +1728,7 @@ if HAVE_NUMBA:
     TT_MASK = TT_SIZE - 1
 
     # info[] slots
-    NODES, NODE_LIMIT, STOPPED, REP_LEN = 0, 1, 2, 3
+    NODES, NODE_LIMIT, STOPPED, REP_LEN, US = 0, 1, 2, 3, 4
 
 
     @njit(cache=False)
@@ -2123,9 +2136,9 @@ if HAVE_NUMBA:
         if ply > 0:
             for i in range(info[REP_LEN]):
                 if rep[i] == key:
-                    return 0
+                    return -JIT_CONTEMPT if st[0] == info[US] else JIT_CONTEMPT
             if st[3] >= 100:
-                return 0
+                return -JIT_CONTEMPT if st[0] == info[US] else JIT_CONTEMPT
 
         slot = int(key & TT_MASK)
         tt_move = 0
@@ -2303,6 +2316,7 @@ if HAVE_NUMBA:
             out: Any
     ) -> Any:
         """One pass at a fixed depth. out[0] = score, out[1] = best move."""
+        info[US] = st[0]
         key = st[6]
         base = 0
         count = jit_generate(board, st, moves, base, False)
@@ -2459,7 +2473,7 @@ def _jit_choose(fen: str, time_left_ms: int) -> str:
         remaining = hard - (time.monotonic() - started) * 1000.0
         if remaining <= 0:
             break
-        window = 40
+        window = JIT_ASPIRATION
         alpha = -31000 if depth < 4 else score - window
         beta = 31000 if depth < 4 else score + window
         stopped = False
@@ -2533,7 +2547,7 @@ def get_move(fen: str, time_left_ms: int) -> str:
                 return random.choice(playable).uci()
 
         if time_left_ms <= PANIC_MS:
-            searcher = Searcher(time.monotonic() + 0.05)
+            searcher = Searcher(time.monotonic() + 0.05, board.turn)
             return searcher.order(board, moves, None, 0)[0].uci()
 
         uci = _jit_choose(fen, time_left_ms)
