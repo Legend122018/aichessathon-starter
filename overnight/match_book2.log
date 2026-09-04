@@ -1,0 +1,45 @@
+7 concurrent games, two processes each, one core per agent (16 physical cores)
+SPRT [-5, 15] bounds [-6.91, 6.91] at 20s + 0.2s
+note: engine exposes no JIT_READY flag; warmed at import
+note: engine exposes no JIT_READY flag; warmed at import
+note: engine exposes no JIT_READY flag; warmed at import
+note: engine exposes no JIT_READY flag; warmed at import
+note: engine exposes no JIT_READY flag; warmed at import
+note: engine exposes no JIT_READY flag; warmed at import
+note: engine exposes no JIT_READY flag; warmed at import
+note: engine exposes no JIT_READY flag; warmed at import
+note: engine exposes no JIT_READY flag; warmed at import
+note: engine exposes no JIT_READY flag; warmed at import
+note: engine exposes no JIT_READY flag; warmed at import
+note: engine exposes no JIT_READY flag; warmed at import
+note: engine exposes no JIT_READY flag; warmed at import
+note: engine exposes no JIT_READY flag; warmed at import
+engines up, playing
+openings: initial position
+     14 games  +4 =7 -3  elo +25 +/- 203  LLR +0.00  (2 min)
+     28 games  +6 =17 -5  elo +12 +/- 135  LLR +0.00  (5 min)
+     42 games  +10 =25 -7  elo +25 +/- 109  LLR +0.34  (7 min)
+     56 games  +13 =33 -10  elo +19 +/- 93  LLR +0.31  (9 min)
+     70 games  +17 =41 -12  elo +25 +/- 83  LLR +0.56  (12 min)
+     84 games  +19 =52 -13  elo +25 +/- 76  LLR +0.73  (14 min)
+     98 games  +24 =61 -13  elo +39 +/- 70  LLR +1.51  (16 min)
+    112 games  +25 =72 -15  elo +31 +/- 65  LLR +1.38  (19 min)
+    126 games  +26 =83 -17  elo +25 +/- 61  LLR +1.23  (21 min)
+    140 games  +29 =93 -18  elo +27 +/- 58  LLR +1.57  (23 min)
+    154 games  +33 =102 -19  elo +32 +/- 56  LLR +2.06  (26 min)
+    168 games  +38 =111 -19  elo +39 +/- 53  LLR +2.92  (28 min)
+    182 games  +40 =119 -23  elo +33 +/- 51  LLR +2.45  (30 min)
+    196 games  +44 =128 -24  elo +36 +/- 49  LLR +2.94  (33 min)
+    210 games  +47 =137 -26  elo +35 +/- 48  LLR +3.06  (35 min)
+    224 games  +50 =143 -31  elo +30 +/- 46  LLR +2.56  (37 min)
+    238 games  +53 =152 -33  elo +29 +/- 45  LLR +2.69  (40 min)
+    252 games  +56 =159 -37  elo +26 +/- 43  LLR +2.43  (42 min)
+    266 games  +59 =166 -41  elo +24 +/- 42  LLR +2.20  (44 min)
+    280 games  +63 =175 -42  elo +26 +/- 41  LLR +2.64  (47 min)
+    294 games  +68 =182 -44  elo +28 +/- 40  LLR +3.04  (49 min)
+    308 games  +76 =186 -46  elo +34 +/- 39  LLR +3.81  (51 min)
+    322 games  +82 =193 -47  elo +38 +/- 38  LLR +4.49  (54 min)
+    336 games  +85 =199 -52  elo +34 +/- 37  LLR +4.07  (56 min)
+    350 games  +88 =209 -53  elo +35 +/- 37  LLR +4.39  (59 min)
+    364 games  +91 =215 -58  elo +32 +/- 36  LLR +3.98  (61 min)
+    378 games  +96 =220 -62  elo +31 +/- 35  LLR +4.01  (63 min)
