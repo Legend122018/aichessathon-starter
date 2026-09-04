@@ -1,0 +1,2 @@
+7 concurrent games, two processes each, one core per agent (16 physical cores)
+SPRT [-10, 15] bounds [-2.94, 2.94] at 20s + 0.2s

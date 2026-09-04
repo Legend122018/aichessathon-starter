@@ -10,3 +10,5 @@ overnight/data/
 overnight/*.exe
 overnight/tune_sample.csv
 overnight/exemplar/
+overnight/exemplar_contempt/
+submission_exemplar.zip

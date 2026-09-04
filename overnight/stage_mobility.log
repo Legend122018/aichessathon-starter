@@ -1,0 +1,15 @@
+7 concurrent games, two processes each, one core per agent (16 physical cores)
+SPRT [-5, 10] bounds [-2.94, 2.94] at 20s + 0.2s
+engines up, playing
+     14 games  +5 =4 -5  elo -0 +/- 202  LLR +0.00  (15 min)
+     28 games  +12 =4 -12  elo -0 +/- 135  LLR +0.00  (27 min)
+     42 games  +19 =9 -14  elo +42 +/- 109  LLR +0.26  (43 min)
+     56 games  +23 =15 -18  elo +31 +/- 94  LLR +0.27  (58 min)
+     70 games  +30 =16 -24  elo +30 +/- 83  LLR +0.31  (72 min)
+     84 games  +35 =17 -32  elo +12 +/- 76  LLR +0.13  (87 min)
+     98 games  +39 =23 -36  elo +11 +/- 70  LLR +0.13  (102 min)
+    112 games  +43 =24 -45  elo -6 +/- 65  LLR -0.15  (117 min)
+    126 games  +53 =25 -48  elo +14 +/- 61  LLR +0.22  (131 min)
+    140 games  +57 =28 -55  elo +5 +/- 58  LLR +0.05  (145 min)
+    154 games  +62 =34 -58  elo +9 +/- 55  LLR +0.16  (160 min)
+SPRT: out of time at 150 minutes, undecided
