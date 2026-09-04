@@ -28,6 +28,7 @@ import os
 import pathlib
 import random
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -81,7 +82,9 @@ def engine_process(conn, path: str, cores: list[int]) -> None:
     module = importlib.util.module_from_spec(spec)
     sys.modules["arena_agent"] = module
     spec.loader.exec_module(module)
-    conn.send(("ready", bool(getattr(module, "JIT_READY", False))))
+    # None means "the engine does not use this convention", which is not a failure.
+    flag = getattr(module, "JIT_READY", None)
+    conn.send(("ready", None if flag is None else bool(flag)))
 
     while True:
         message = conn.recv()
@@ -226,7 +229,14 @@ def main() -> None:
     for pair in slots:
         for conn, _ in pair:
             _tag, ready = conn.recv()
-            if not ready:
+            if ready is None:
+                # No readiness flag at all. That is not a problem, it is a different
+                # engine: JIT_READY is this repo's own convention and the exemplar warms
+                # up at import without setting it. Warning here said the JIT had failed
+                # when it had not, on every process of every run.
+                print("note: engine exposes no JIT_READY flag; warmed at import",
+                      flush=True)
+            elif not ready:
                 print("warning: an engine came up without its JIT", flush=True)
     print("engines up, playing", flush=True)
 
@@ -234,16 +244,35 @@ def main() -> None:
     wins = draws = losses = 0
     started = time.monotonic()
     verdict = 2
+
+    def play_slot(pair, start, out: list) -> None:
+        """One slot's pair of games: the same opening from both colours."""
+        (cand, _), (champ, _) = pair
+        out.append(play(cand, champ, start, args.base_ms, args.inc_ms))
+        out.append(1.0 - play(champ, cand, start, args.base_ms, args.inc_ms))
+
     try:
         while wins + draws + losses < args.max_games:
-            start = opening(rng)
-            for pair in slots:
-                (cand, _), (champ, _) = pair
-                for candidate_is_white in (True, False):
-                    if candidate_is_white:
-                        score = play(cand, champ, start, args.base_ms, args.inc_ms)
-                    else:
-                        score = 1.0 - play(champ, cand, start, args.base_ms, args.inc_ms)
+            # The slots run at the same time. They did not before: `play` blocks on a
+            # pipe until the engine answers, so iterating over the slots played them one
+            # after another and left twelve of the fourteen processes idle. The header
+            # has always said "7 concurrent games" and it has never been true, which is
+            # most of why a match here costs hours and why nothing in this engine has
+            # ever been measured to better than about +-50 Elo.
+            #
+            # Threads rather than processes because the referee does nothing but wait:
+            # every recv releases the GIL, and the actual work is in the child
+            # processes, each already pinned to its own core.
+            batch = [(pair, opening(rng), []) for pair in slots]
+            threads = [threading.Thread(target=play_slot, args=(pair, start, out))
+                       for pair, start, out in batch]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+
+            for _pair, _start, out in batch:
+                for score in out:
                     if score == 1.0:
                         wins += 1
                     elif score == 0.0:
