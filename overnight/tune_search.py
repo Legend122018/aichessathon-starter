@@ -3,15 +3,28 @@
 A match is the honest way to measure a change, and it is also the reason nothing gets
 tuned: a term worth +10 Elo needs about 2,000 games, which is more than a day on this
 hardware. So this measures move quality directly instead. The engine picks a move on each
-position of a suite under a fixed clock, and Stockfish says what that move cost against
-the best one available. The average of that loss, in centipawns, is the score - lower is
-better, and it moves for reasons a match would take hours to see.
+position of a suite under a fixed node count, and Stockfish says what that move cost
+against the best one available. The average of that loss, in centipawns, is the score -
+lower is better, and it moves for reasons a match would take hours to see.
 
-It is a proxy, not a verdict. Anything it likes still has to win a real match before it
+Two rounds of this measured nothing but their own noise, so both causes are now closed:
+
+  * The search ran on a clock and the judge ran on a clock, so neither was reproducible;
+    four identical runs scored 23.1, 20.7, 22.6 and 23.8 cp. Fixed nodes and fixed depth
+    make a rerun reproduce exactly.
+  * Even reproducible, a mean over N positions carries sampling error, and one position
+    swinging from 0 to 300 cp moves an 80 position mean by 3.75 cp - larger than any
+    effect worth having. So nothing is compared as two means any more. Every candidate
+    runs the same positions in the same order as the baseline, and the score is the
+    average of the per-position differences, which cancels the positions themselves and
+    leaves an error bar you can test against.
+
+It is still a proxy, not a verdict. Anything it likes has to win a real match before it
 ships; what it buys is knowing which few candidates are worth a match at all.
 
-    python overnight/tune_search.py --sweep          # one parameter at a time
-    python overnight/tune_search.py --baseline       # just score the defaults
+    python overnight/tune_search.py --sweep                     # one parameter at a time
+    python overnight/tune_search.py --candidates RFP_MARGIN=85  # re-test a shortlist
+    python overnight/tune_search.py --baseline                  # just score the defaults
 """
 
 from __future__ import annotations
@@ -19,6 +32,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import random
+import statistics
 import sys
 import time
 from pathlib import Path
@@ -111,33 +125,64 @@ class Judge:
         return max(0.0, best - after)
 
 
-def score_config(agent, judge: Judge, fens: list[str], params: dict[str, int],
-                 think_ms: int) -> float:
+def run_config(agent, judge: Judge, fens: list[str], params: dict[str, int],
+               think_ms: int) -> tuple[list[float], list[str]]:
+    """Per-position loss and chosen move. The losses come back one per position rather
+    than averaged, because a candidate is judged against the baseline position by
+    position - see the module docstring."""
     engine = agent._STATE.engine
     for name, value in params.items():
         engine.set_param(name, value)
-    total = 0.0
+    losses, moves = [], []
     for fen in fens:
         engine.new_game()
         engine.set_position(fen)
-        # Fixed nodes, not fixed time. A time limit makes the search nondeterministic -
-        # the same configuration scored 20.7 to 23.8 cp across four identical runs, which
-        # is larger than any parameter effect being looked for. Counting nodes instead
-        # makes a rerun reproduce exactly, so a difference is the parameter and not the
-        # scheduler.
+        # Fixed nodes, not fixed time: a time limit makes the search nondeterministic, so
+        # a rerun of the same configuration lands somewhere else and the difference gets
+        # read as the parameter.
         info = engine.search(max_depth=64, nodes=think_ms * 400)
-        total += judge.loss(fen, info.bestmove)
-    return total / len(fens)
+        losses.append(judge.loss(fen, info.bestmove))
+        moves.append(info.bestmove)
+    return losses, moves
+
+
+def compare(base: list[float], trial: list[float]) -> tuple[float, float]:
+    """Mean paired difference and its standard error, in centipawns.
+
+    Pairing is the whole point. The positions are shared, so subtracting position by
+    position removes the suite's own variance - which is enormous, since most moves lose
+    nothing and a few lose a queen - and leaves only what the parameter changed. Positions
+    where the engine played the same move contribute an exact zero and shrink the error
+    bar honestly, rather than adding noise to both sides of a two-mean comparison.
+    """
+    diffs = [t - b for b, t in zip(base, trial, strict=True)]
+    mean = statistics.fmean(diffs)
+    if len(diffs) < 2:
+        return mean, float("inf")
+    return mean, statistics.stdev(diffs) / len(diffs) ** 0.5
+
+
+def verdict(delta: float, se: float) -> str:
+    """Two standard errors, both ways. Anything inside is 'level' - not 'slightly better'.
+    Calling a sub-noise wobble a finding is how the first two sweeps produced 33 winners
+    out of 64 for an engine that was already tuned."""
+    if delta + 2 * se < 0:
+        return "BETTER"
+    if delta - 2 * se > 0:
+        return "worse"
+    return "level"
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--positions", type=int, default=40)
+    parser.add_argument("--positions", type=int, default=200)
     parser.add_argument("--think-ms", type=int, default=500,
                         help="node budget per move is this times 400")
     parser.add_argument("--judge-depth", type=int, default=12)
     parser.add_argument("--sweep", action="store_true")
     parser.add_argument("--baseline", action="store_true")
+    parser.add_argument("--candidates", default="",
+                        help="comma separated NAME=VALUE to re-test at higher precision")
     parser.add_argument("--out", default=str(HERE / "REPORT_search_tuning.md"))
     args = parser.parse_args()
 
@@ -149,49 +194,68 @@ def main() -> None:
 
     defaults = {name: agent._STATE.engine.get_param(name) for name in SWEEP}
     print(f"{len(fens)} positions, {args.think_ms * 400:,} nodes per move, "
-          f"judged by Stockfish at depth {args.judge_depth}\n", flush=True)
+          f"judged by Stockfish at depth {args.judge_depth}", flush=True)
+    print("delta is the mean paired difference against the baseline, +-2 standard "
+          "errors\n", flush=True)
 
     started = time.monotonic()
-    base = score_config(agent, judge, fens, defaults, args.think_ms)
-    print(f"baseline (shipped defaults): {base:.1f} cp average loss "
-          f"[{time.monotonic() - started:.0f}s]\n", flush=True)
+    base, base_moves = run_config(agent, judge, fens, defaults, args.think_ms)
+    base_mean = statistics.fmean(base)
+    per_config = time.monotonic() - started
+    print(f"baseline (shipped defaults): {base_mean:.1f} cp average loss "
+          f"[{per_config:.0f}s]\n", flush=True)
 
     if args.baseline:
         sf.quit()
         return
 
+    if args.candidates:
+        trials = []
+        for item in args.candidates.split(","):
+            name, _, value = item.partition("=")
+            trials.append((name.strip(), int(value)))
+    else:
+        trials = [(n, v) for n, values in SWEEP.items() for v in values]
+    print(f"{len(trials)} configurations to try, about "
+          f"{len(trials) * per_config / 60:.0f} min\n", flush=True)
+
     lines = ["# Search parameter sweep\n",
              f"Average centipawn loss against Stockfish over {len(fens)} positions at "
-             f"{args.think_ms}ms per move. Lower is better; the baseline is the shipped "
-             f"configuration.\n",
-             f"**baseline {base:.1f} cp**\n",
-             "| parameter | default | value | cp loss | change |",
-             "| --- | --- | --- | --- | --- |"]
-    wins: list[tuple[float, str, int]] = []
+             f"{args.think_ms * 400:,} nodes per move. Lower is better. `delta` is the "
+             "mean paired difference from the shipped configuration, and a candidate "
+             "only counts if it clears two standard errors.\n",
+             f"**baseline {base_mean:.1f} cp**\n",
+             "| parameter | default | value | cp loss | delta | moves changed | verdict |",
+             "| --- | --- | --- | --- | --- | --- | --- |"]
+    wins: list[tuple[float, str, int, float]] = []
 
-    for name, values in SWEEP.items():
-        for value in values:
-            trial = dict(defaults)
-            trial[name] = value
-            got = score_config(agent, judge, fens, trial, args.think_ms)
-            delta = got - base
-            mark = "better" if delta < -0.5 else ("worse" if delta > 0.5 else "level")
-            print(f"  {name:<16} {value:>7}  {got:7.1f} cp  {delta:+6.1f}  {mark}", flush=True)
-            lines.append(f"| {name} | {defaults[name]} | {value} | {got:.1f} | "
-                         f"{delta:+.1f} {mark} |")
-            if delta < -0.5:
-                wins.append((delta, name, value))
+    for name, value in trials:
+        trial = dict(defaults)
+        trial[name] = value
+        losses, moves = run_config(agent, judge, fens, trial, args.think_ms)
+        delta, se = compare(base, losses)
+        changed = sum(1 for a, b in zip(base_moves, moves, strict=True) if a != b)
+        mark = verdict(delta, se)
+        print(f"  {name:<16}{value:>7}  {statistics.fmean(losses):6.1f} cp  "
+              f"{delta:+6.1f} +-{2 * se:4.1f}  {changed:>3}/{len(fens)} moves  {mark}",
+              flush=True)
+        lines.append(f"| {name} | {defaults[name]} | {value} | "
+                     f"{statistics.fmean(losses):.1f} | {delta:+.1f} ±{2 * se:.1f} | "
+                     f"{changed}/{len(fens)} | {mark} |")
+        if mark == "BETTER":
+            wins.append((delta, name, value, se))
 
     wins.sort()
     lines.append("\n## Worth a match\n")
     if wins:
-        for delta, name, value in wins[:8]:
-            lines.append(f"- `{name} = {value}` ({delta:+.1f} cp)")
-        lines.append("\nThese are proxy results. Each still has to win a real match "
-                     "before it ships.")
+        for delta, name, value, se in wins[:8]:
+            lines.append(f"- `{name} = {value}` ({delta:+.1f} ±{2 * se:.1f} cp)")
+        lines.append("\nThese are proxy results on one position suite. Each still has to "
+                     "win a real match before it ships.")
     else:
-        lines.append("Nothing beat the defaults by more than noise. The shipped "
-                     "configuration looks well chosen.")
+        lines.append("Nothing cleared two standard errors. On this evidence the shipped "
+                     "configuration is already at least as good as every neighbour "
+                     "tried, and the search is not where the remaining Elo is.")
 
     Path(args.out).write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"\nwrote {args.out}")
