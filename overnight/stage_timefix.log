@@ -1,0 +1,22 @@
+7 concurrent games, two processes each, one core per agent (16 physical cores)
+SPRT [0, 30] bounds [-2.94, 2.94] at 120s + 0.5s
+warning: an engine came up without its JIT
+warning: an engine came up without its JIT
+warning: an engine came up without its JIT
+warning: an engine came up without its JIT
+warning: an engine came up without its JIT
+warning: an engine came up without its JIT
+warning: an engine came up without its JIT
+warning: an engine came up without its JIT
+warning: an engine came up without its JIT
+warning: an engine came up without its JIT
+warning: an engine came up without its JIT
+warning: an engine came up without its JIT
+warning: an engine came up without its JIT
+warning: an engine came up without its JIT
+engines up, playing
+     14 games  +4 =8 -2  elo +50 +/- 207  LLR +0.00  (62 min)
+     28 games  +6 =18 -4  elo +25 +/- 136  LLR +0.00  (131 min)
+     42 games  +7 =28 -7  elo -0 +/- 108  LLR -0.47  (198 min)
+     56 games  +9 =35 -12  elo -19 +/- 93  LLR -1.25  (266 min)
+SPRT: out of time at 240 minutes, undecided
