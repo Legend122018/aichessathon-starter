@@ -132,10 +132,20 @@ def engine_process(conn, path: str, cores: list[int]) -> None:
                 conn.send(("error", repr(exc)[:200]))
 
 
-def opening(rng: random.Random) -> chess.Board:
+def opening(rng: random.Random, low: int = 4, high: int = 8) -> chess.Board:
+    """A starting position, `low` to `high` random plies from the initial one.
+
+    Random plies buy diverse games, and for anything inside the search that is exactly
+    what you want. For an opening book it destroys the measurement: four to eight random
+    moves leave book lines immediately - none of fifty such positions were in ours - so
+    the booked engine and the unbooked one play an identical game and the match returns
+    the noise floor. Pass `--opening-plies 0` to start where a real game starts.
+    """
+    if high <= 0:
+        return chess.Board()
     for _ in range(60):
         board = chess.Board()
-        for _ in range(rng.randint(4, 8)):
+        for _ in range(rng.randint(low, high)):
             moves = list(board.legal_moves)
             if not moves:
                 break
@@ -199,6 +209,10 @@ def main() -> None:
     parser.add_argument("--max-minutes", type=float, default=0.0)
     parser.add_argument("--smt-stride", type=int, default=2)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--opening-plies", default="4:8",
+                        help="random plies before the game starts, MIN:MAX. "
+                             "Use 0 to start from the initial position, which is "
+                             "the only way to measure an opening book.")
     args = parser.parse_args()
 
     total_cores = os.cpu_count() or 2
@@ -240,6 +254,12 @@ def main() -> None:
                 print("warning: an engine came up without its JIT", flush=True)
     print("engines up, playing", flush=True)
 
+    parts = str(args.opening_plies).split(":")
+    low = int(parts[0])
+    high = int(parts[-1])
+    shape = "initial position" if high <= 0 else f"{low}-{high} random plies"
+    print(f"openings: {shape}", flush=True)
+
     rng = random.Random(args.seed)
     wins = draws = losses = 0
     started = time.monotonic()
@@ -263,7 +283,7 @@ def main() -> None:
             # Threads rather than processes because the referee does nothing but wait:
             # every recv releases the GIL, and the actual work is in the child
             # processes, each already pinned to its own core.
-            batch = [(pair, opening(rng), []) for pair in slots]
+            batch = [(pair, opening(rng, low, high), []) for pair in slots]
             threads = [threading.Thread(target=play_slot, args=(pair, start, out))
                        for pair, start, out in batch]
             for thread in threads:
