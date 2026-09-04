@@ -6,8 +6,13 @@ worse than known theory - three seconds of search against an opponent playing th
 of it - and, more importantly, they cost time. The six rated games all spend about three
 seconds a move until roughly move 32 and then have nothing left, playing the remaining 8
 to 46 moves without searching at all. Every move answered from a book is answered in
-microseconds, so a twelve-ply book hands roughly 30-40 seconds of a 120 second game back
-to the middlegame, which is where those games were actually decided.
+microseconds, so the time it would have spent on them goes to the middlegame instead,
+which is where those games were actually decided. Measured against the engine's own
+budget on a clock that never got the time back: seven moves and 21.9s of a 120s game,
+about 18%. (An earlier version of that measurement said 30-45s. It multiplied book moves
+by the length of the searches that came after them, which is circular - those searches
+are long precisely because the book had already banked the time - and it counted plies
+of self-play as though one player got all of them.)
 
 The book is built here rather than downloaded: Lichess's explorer now needs a token, and
 generating it locally means every move in it is one this machine verified at depth, with
@@ -52,6 +57,21 @@ def analyse(sf, board: chess.Board, depth: int, multipv: int):
     return out
 
 
+def width_at(plies: int, base: int, step: int = 2, floor: int = 2) -> int:
+    """How many opponent replies to prepare for, at this distance from the root.
+
+    A fixed width is the wrong shape. Branching compounds, so a constant of 3 spends
+    almost everything deep in one line while leaving the root bare - the first book
+    built this way answered only 3 of the 20 possible first moves, meaning half our
+    games left the book before move one as Black. Width near the root is also the
+    cheapest coverage there is: those nodes are few, and they gate everything below.
+
+    So it starts wide and decays. Deep in a line the opponent has usually committed and
+    two candidates is plenty.
+    """
+    return max(floor, base - plies // step)
+
+
 def build(sf, our_color: bool, book: dict[int, str], deadline: float,
           depth: int, multipv: int, margin: int, max_plies: int, stats: dict) -> None:
     """Breadth-first walk of the opening tree from the side `our_color` plays.
@@ -89,7 +109,7 @@ def build(sf, our_color: bool, book: dict[int, str], deadline: float,
         else:
             # Opponent's move: branch over everything plausible, so the book still
             # answers when they deviate. Nothing is stored here - we are not to move.
-            moves = analyse(sf, board, depth, multipv)
+            moves = analyse(sf, board, depth, width_at(plies, multipv))
             if not moves:
                 continue
             best = moves[0][1]
@@ -111,8 +131,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--minutes", type=float, default=60.0)
     parser.add_argument("--depth", type=int, default=22)
-    parser.add_argument("--multipv", type=int, default=4,
-                        help="how many opponent replies to branch over")
+    parser.add_argument("--multipv", type=int, default=6,
+                        help="opponent replies to branch over at the root; this decays "
+                             "with depth, see width_at")
     parser.add_argument("--margin", type=int, default=75,
                         help="centipawns from best an opponent move may be and still "
                              "be considered plausible enough to prepare for")
