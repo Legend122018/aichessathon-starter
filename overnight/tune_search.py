@@ -258,8 +258,22 @@ def main() -> None:
     if wins:
         for delta, name, value, se in wins[:8]:
             lines.append(f"- `{name} = {value}` ({delta:+.1f} ±{2 * se:.1f} cp)")
-        lines.append("\nThese are proxy results on one position suite. Each still has to "
-                     "win a real match before it ships.")
+        # Two standard errors is a 95% bar for one test, and this ran many of them.
+        # Saying so in the report matters more than it sounds: an earlier version of
+        # this sweep called 33 of 64 configurations better and not one of them was.
+        lines.append(
+            f"\nRead this with the count in mind. {len(trials)} configurations were "
+            f"tried against a two standard error bar, so roughly "
+            f"{len(trials) * 0.05:.0f} are expected to clear it by chance alone, and "
+            f"{len(wins)} did. Clearing it here earns a rerun on a different position "
+            "suite, not a place in the engine - what separates a real effect from a "
+            "lucky one is that it repeats on positions it was not selected on. Use "
+            "`--seed` for that.")
+        lines.append(
+            f"\nNote the node count too. These searches are {args.think_ms * 400:,} "
+            "nodes, where a real move at this time control is several million. A "
+            "parameter that helps at one depth need not help at the other, so even a "
+            "replicated result still has to win a match before it ships.")
     else:
         lines.append("Nothing cleared two standard errors. On this evidence the shipped "
                      "configuration is already at least as good as every neighbour "
