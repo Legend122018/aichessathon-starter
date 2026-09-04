@@ -223,11 +223,17 @@ class Engine:
                 if on_iter is not None:
                     on_iter(info)
                 if not quiet:
+                    # Sliced because the competition caps a move's output at 4 KB and
+                    # forfeits the game past it. This is unreachable as shipped -
+                    # `quiet` defaults to True and the agent never passes it - but an
+                    # unbounded print on the per-iteration path is one flipped default
+                    # away from losing every game, and a PV is exactly the kind of
+                    # string that grows without asking.
                     print(f"info depth {depth} seldepth {info.seldepth} "
                           f"score {score} nodes {info.nodes} "
                           f"time {info.time_ms:.0f} nps "
                           f"{info.nodes/max(info.time_ms,1)*1000:.0f} "
-                          f"pv {' '.join(info.pv)}", flush=True)
+                          f"pv {' '.join(info.pv)}"[:512], flush=True)
 
                 if nodes is not None and int(self.N[ON_NODES]) >= nodes:
                     break
