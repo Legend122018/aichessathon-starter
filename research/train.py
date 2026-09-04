@@ -47,7 +47,7 @@ def features(board: chess.Board, mover: chess.Color) -> list[int]:
     return active
 
 
-def prep() -> None:
+def prep(limit: int = 0) -> None:
     # Plain int lists would cost well over a gigabyte at this scale; array keeps the
     # same data in four bytes per entry.
     rows = array.array("i")
@@ -72,8 +72,12 @@ def prep() -> None:
                     cols.append(index)
                 targets.append(LAMBDA * win + (1.0 - LAMBDA) * result)
                 seen += 1
-                if seen % 100_000 == 0:
+                if seen % 250_000 == 0:
                     print(f"prepared {seen}", flush=True)
+                if limit and seen >= limit:
+                    break
+        if limit and seen >= limit:
+            break
 
     matrix = sp.csr_matrix(
         (
@@ -93,8 +97,8 @@ def save_safetensors(path: str, tensors: dict[str, np.ndarray]) -> None:
     header: dict[str, object] = {}
     blobs: list[bytes] = []
     offset = 0
-    for name, array in tensors.items():
-        contiguous = np.ascontiguousarray(array, dtype=np.float32)
+    for name, tensor in tensors.items():
+        contiguous = np.ascontiguousarray(tensor, dtype=np.float32)
         payload = contiguous.tobytes()
         header[name] = {
             "dtype": "F32",
@@ -212,6 +216,7 @@ def fit(hidden: int, narrow: int, epochs: int, batch: int, out: str) -> None:
 
 
 def main() -> None:
+    global DATA
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prep", action="store_true")
     parser.add_argument("--fit", action="store_true")
@@ -220,9 +225,13 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=30)
     parser.add_argument("--batch", type=int, default=8192)
     parser.add_argument("--out", default="/root/data/net.safetensors")
+    parser.add_argument("--data", default=DATA, help="folder holding the part*.csv files")
+    parser.add_argument("--limit", type=int, default=0,
+                        help="stop after this many positions (0 means all of them)")
     args = parser.parse_args()
+    DATA = args.data
     if args.prep:
-        prep()
+        prep(args.limit)
     if args.fit:
         fit(args.hidden, args.narrow, args.epochs, args.batch, args.out)
 

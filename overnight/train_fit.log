@@ -1,0 +1,32 @@
+4553528 positions: 4416922 train, 136606 validation
+epoch 1/30  train 0.01249  valid 0.01015  5s
+epoch 2/30  train 0.00952  valid 0.00938  5s
+epoch 3/30  train 0.00895  valid 0.00949  6s
+epoch 4/30  train 0.00868  valid 0.00875  6s
+epoch 5/30  train 0.00847  valid 0.00860  6s
+epoch 6/30  train 0.00835  valid 0.00903  6s
+epoch 7/30  train 0.00822  valid 0.00856  6s
+epoch 8/30  train 0.00812  valid 0.00842  6s
+epoch 9/30  train 0.00778  valid 0.00816  6s
+epoch 10/30  train 0.00774  valid 0.00815  6s
+epoch 11/30  train 0.00772  valid 0.00813  6s
+epoch 12/30  train 0.00769  valid 0.00814  6s
+epoch 13/30  train 0.00767  valid 0.00819  6s
+epoch 14/30  train 0.00765  valid 0.00828  6s
+epoch 15/30  train 0.00763  valid 0.00810  6s
+epoch 16/30  train 0.00761  valid 0.00817  6s
+epoch 17/30  train 0.00743  valid 0.00800  6s
+epoch 18/30  train 0.00741  valid 0.00799  6s
+epoch 19/30  train 0.00741  valid 0.00799  6s
+epoch 20/30  train 0.00740  valid 0.00801  6s
+epoch 21/30  train 0.00739  valid 0.00797  6s
+epoch 22/30  train 0.00738  valid 0.00798  5s
+epoch 23/30  train 0.00738  valid 0.00796  5s
+epoch 24/30  train 0.00737  valid 0.00797  5s
+epoch 25/30  train 0.00728  valid 0.00794  5s
+epoch 26/30  train 0.00728  valid 0.00792  5s
+epoch 27/30  train 0.00727  valid 0.00792  6s
+epoch 28/30  train 0.00727  valid 0.00791  5s
+epoch 29/30  train 0.00726  valid 0.00791  5s
+epoch 30/30  train 0.00726  valid 0.00792  5s
+best validation 0.00791 -> overnight/net128.safetensors

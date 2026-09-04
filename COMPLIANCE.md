@@ -10,7 +10,7 @@ Last checked against the live rules on 2 September 2026.
 
 | Rule | Status |
 | --- | --- |
-| Zip, 50 MB unzipped at most | 103 KB unzipped, 25 KB zipped |
+| Zip, 50 MB unzipped at most | 114 KB unzipped, 28 KB zipped |
 | `agent.py` at the root, not in a folder | yes, `harness/package.py` builds it that way |
 | `get_move(fen: str, time_left_ms: int) -> str`, UCI | yes |
 | 6 uploads per team per day | tracked manually; gate locally before each upload |
@@ -22,9 +22,9 @@ The container ships Python 3.12 plus torch 2.13.0+cpu, numpy 2.5.2, python-chess
 1.11.2, onnxruntime 1.29.0 and numba 0.67.0. Nothing else installs and a
 `requirements.txt` in the zip is ignored.
 
-`agent.py` imports exactly: `__future__`, `collections`, `random`, `time`, `typing` from
-the standard library, and `chess`, `numba`, `numpy` from the allowed set. It imports
-nothing else. The local `uv` environment pins the same versions the platform does, so
+`agent.py` imports exactly: `__future__`, `collections`, `random`, `threading`, `time`,
+`typing` from the standard library, and `chess`, `numba`, `numpy` from the allowed set.
+It imports nothing else. `threading` arrived with pondering, below. The local `uv` environment pins the same versions the platform does, so
 local measurements transfer.
 
 No native binaries. The file is pure Python source; the speed comes from numba, which
@@ -34,7 +34,7 @@ compiles in process at import.
 
 | Limit | Status |
 | --- | --- |
-| 1 dedicated core | single threaded; no threads are created |
+| 1 dedicated core | one thread during our own move. Pondering runs a single background thread while the opponent thinks, which the rules allow: "your process keeps its core while the opponent thinks". It is stopped before our own search begins, so two searches never run at once and never share the core |
 | 2 GB memory | transposition table is 42 MB, everything else is small |
 | No network, either direction | no socket, urllib, subprocess or http import; verified by AST scan |
 | No GPU | not used, and measured not to be worth using (see below) |
@@ -54,6 +54,45 @@ Measured on a deliberately slow two-core machine: probe 3.5 s, guard estimate 38
 (assuming an 11x multiplier), real import 27.9 s, true multiplier 8.0x. The guard is
 conservative in the safe direction - it gives up on the JIT sooner than it strictly has
 to, rather than risking the budget. On a fast machine the whole import takes about 16 s.
+
+### Pondering
+
+The rules allow it in as many words - "Pondering allowed. Your process keeps its core
+while the opponent thinks" - and the engine now uses it. After we return a move, the
+transposition table already holds the best reply the search just found, so we push that
+reply and search the position it gives, which is the one we expect to be asked about
+next. Measured against a real opponent the prediction is right about four times in five.
+
+Two things make it safe rather than merely fast:
+
+- **The two searches never overlap.** `get_move` calls `_ponder_stop()` before it touches
+  anything, and that returns only once the background thread has actually exited. If the
+  thread will not stop - which node-capped slices should make unreachable - the move is
+  played by the pure-Python engine, which shares none of the compiled engine's arrays,
+  rather than racing a live thread for them. Nothing is abandoned while it still holds
+  the workspace.
+- **Stopping cannot cost meaningful clock.** The background search runs in slices of
+  40,000 nodes, roughly thirty milliseconds, and reads the stop flag between them, so a
+  stop costs at most one slice. numba holds the GIL inside a compiled call, so the loop
+  also yields explicitly between slices; without that, `get_move` can wait through many
+  slices merely to begin, and that is a direct loss of clock.
+
+Measured on the process-per-agent harness that mirrors the platform - one process and one
+core per side, so a background thread cannot win by stealing the core the opponent is
+thinking on. `overnight/match_fast.py` cannot measure this honestly and was not used.
+
+The gain is real but smaller than it first looked, and the reason is worth recording.
+A first run at 20 s + 0.2 s took +31 =19 -6 over 56 games and crossed an SPRT accept
+bound at +167 Elo. That number is inflated by the stopping rule itself: a test that
+halts as soon as it is winning reports the streak that stopped it. A second run to a
+fixed time limit - stopped for a reason unrelated to its result, so unbiased - took
++77 =48 -57 over 182 games, or +38 +/- 44 Elo. All 238 games pool to +66 +/- 38.
+
+The honest summary is +30 to +40 Elo: positive, the largest single gain in the engine,
+and not conclusively proven at 95% by the unbiased run on its own. What is not in doubt
+is that the mechanism works. Over a match the pondering process accumulates about 1.8x
+the CPU time of its opponent, and the predicted reply is right about four times in five,
+which is the extra thinking the feature exists to buy.
 
 ## Originality
 
@@ -83,7 +122,7 @@ to, rather than risking the budget. On a fast machine the whole import takes abo
 
 > "What you ship has to be source a judge can read." Obfuscated agents are disqualified.
 
-`agent.py` is 2,543 lines of annotated Python with 128 comment lines explaining the
+`agent.py` is 2,774 lines of annotated Python with 179 comment lines explaining the
 non-obvious parts. It passes `ruff` and `mypy --strict` clean. No minification, no
 encoded blobs, no generated identifiers.
 
@@ -114,8 +153,8 @@ impersonation. The agent interacts with the platform only through `get_move`.
 
 ## Open items
 
-- Pondering is explicitly allowed and is not implemented. This is a strength opportunity,
-  not a compliance gap.
-- The local harness adjudicates a 300-ply game as a draw; the platform adjudicates on
-  material first. Local results are very slightly biased against an engine that reaches
-  ply 300 ahead.
+- KNN vs K is a draw the cannot-win test does not catch, because the test asks whether
+  the stronger side is a rook ahead and two knights clear that bar. It is rare enough
+  not to be worth the extra condition, and it costs at most a wasted fifty moves.
+- The trouble-time experiment in `overnight/try_trouble.py` is unvalidated and does not
+  ship: it measured neutral at 8s + 80ms, which is the wrong control to judge it at.

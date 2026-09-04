@@ -33,12 +33,16 @@ EXTRA = [
 ]
 EXTRA += [f"passed_mg_{rank}" for rank in range(1, 7)]
 EXTRA += [f"passed_eg_{rank}" for rank in range(1, 7)]
+EXTRA += [f"mob_mg_{name}" for name in ("knight", "bishop", "rook", "queen")]
+EXTRA += [f"mob_eg_{name}" for name in ("knight", "bishop", "rook", "queen")]
 TOTAL = PST_PARAMS * 2 + len(EXTRA)
 
 MG_BASE = 0
 EG_BASE = PST_PARAMS
 EXTRA_BASE = PST_PARAMS * 2
 EXTRA_INDEX = {name: EXTRA_BASE + i for i, name in enumerate(EXTRA)}
+
+MOB_NAMES = ("knight", "bishop", "rook", "queen")
 
 PHASE_WEIGHT = (0, 0, 1, 1, 2, 4, 0)
 TOTAL_PHASE = 24
@@ -85,6 +89,19 @@ def features(board: chess.Board) -> dict[int, float]:
 
     def bump_eg(name: str, amount: float) -> None:
         extra_eg[EXTRA_INDEX[name]] = extra_eg.get(EXTRA_INDEX[name], 0.0) + amount
+
+    # Mobility. attacks_mask stops a ray at the first blocker and includes that square,
+    # so masking off our own pieces leaves what the engine counts.
+    for piece, name in ((chess.KNIGHT, "knight"), (chess.BISHOP, "bishop"),
+                        (chess.ROOK, "rook"), (chess.QUEEN, "queen")):
+        for square in chess.scan_forward(board.pieces_mask(piece, chess.WHITE)):
+            reach = float(chess.popcount(board.attacks_mask(square) & ~white))
+            bump_mg(f"mob_mg_{name}", reach)
+            bump_eg(f"mob_eg_{name}", reach)
+        for square in chess.scan_forward(board.pieces_mask(piece, chess.BLACK)):
+            reach = float(chess.popcount(board.attacks_mask(square) & ~black))
+            bump_mg(f"mob_mg_{name}", -reach)
+            bump_eg(f"mob_eg_{name}", -reach)
 
     if chess.popcount(board.bishops & white) > 1:
         bump_mg("bishop_pair_mg", 1.0)
@@ -198,6 +215,9 @@ def current_parameters(agent_path: str) -> np.ndarray:
     for rank in range(1, 7):
         weights[EXTRA_INDEX[f"passed_mg_{rank}"]] = module.PASSED_MG[rank]
         weights[EXTRA_INDEX[f"passed_eg_{rank}"]] = module.PASSED_EG[rank]
+    for piece, name in ((2, "knight"), (3, "bishop"), (4, "rook"), (5, "queen")):
+        weights[EXTRA_INDEX[f"mob_mg_{name}"]] = module.MOBILITY_MG[piece]
+        weights[EXTRA_INDEX[f"mob_eg_{name}"]] = module.MOBILITY_EG[piece]
     return weights
 
 
@@ -223,7 +243,7 @@ def check(agent_path: str, samples: int = 300) -> bool:
             board.push(random.choice(moves))
         if board.is_game_over():
             continue
-        searcher = module.Searcher(1e18)
+        searcher = module.Searcher(1e18, board.turn)
         searcher.seed(board)
         # Compare white-relative, before the tempo bonus and fifty-move fade, which the
         # tuner holds fixed.
@@ -387,7 +407,7 @@ def write_tables(weights: np.ndarray, path: str) -> None:
     def block(name: str, base: int) -> str:
         lines = [f"{name} = ("]
         for piece in range(6):
-            values = [int(round(weights[base + piece * 64 + i])) for i in range(64)]
+            values = [round(float(weights[base + piece * 64 + i])) for i in range(64)]
             lines.append("    (")
             for rank in range(8):
                 row = ", ".join(f"{v:5}" for v in values[rank * 8:(rank + 1) * 8])
@@ -396,7 +416,7 @@ def write_tables(weights: np.ndarray, path: str) -> None:
         lines.append(")")
         return "\n".join(lines)
 
-    scalars = {name: int(round(weights[EXTRA_INDEX[name]])) for name in EXTRA}
+    scalars = {name: round(float(weights[EXTRA_INDEX[name]])) for name in EXTRA}
     passed_mg = [0] + [scalars[f"passed_mg_{r}"] for r in range(1, 7)] + [0]
     passed_eg = [0] + [scalars[f"passed_eg_{r}"] for r in range(1, 7)] + [0]
 
@@ -418,6 +438,10 @@ def write_tables(weights: np.ndarray, path: str) -> None:
         handle.write(f"TUNED_SHELTER = {scalars['shelter_mg']}\n")
         handle.write(f"TUNED_PASSED_MG = {tuple(passed_mg)}\n")
         handle.write(f"TUNED_PASSED_EG = {tuple(passed_eg)}\n")
+        mob_mg = [0, 0] + [scalars[f"mob_mg_{n}"] for n in MOB_NAMES] + [0]
+        mob_eg = [0, 0] + [scalars[f"mob_eg_{n}"] for n in MOB_NAMES] + [0]
+        handle.write(f"TUNED_MOBILITY_MG = {tuple(mob_mg)}\n")
+        handle.write(f"TUNED_MOBILITY_EG = {tuple(mob_eg)}\n")
 
 
 def main() -> None:

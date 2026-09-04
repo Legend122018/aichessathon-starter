@@ -38,7 +38,8 @@ def table_literal(name: str, rows: tuple) -> str:
 
 
 def patch(agent_path: str, tables_path: str, out_path: str) -> str:
-    source = open(agent_path).read()
+    with open(agent_path) as handle:
+        source = handle.read()
     tuned = load_module("tuned", tables_path)
 
     names = ["PAWN", "KNIGHT", "BISHOP", "ROOK", "QUEEN", "KING"]
@@ -76,6 +77,13 @@ def patch(agent_path: str, tables_path: str, out_path: str) -> str:
     source = re.sub(r"^DOUBLED_MG, DOUBLED_EG = .*$",
                     f"DOUBLED_MG, DOUBLED_EG = {tuned.TUNED_DOUBLED_MG}, "
                     f"{tuned.TUNED_DOUBLED_EG}", source, flags=re.M)
+    # Mobility lives in one place: the JIT arrays are built from these tuples at import,
+    # so rewriting the tuples rewrites both halves at once.
+    if hasattr(tuned, "TUNED_MOBILITY_MG"):
+        source = re.sub(r"^MOBILITY_MG = \([^)]*\)$",
+                        f"MOBILITY_MG = {tuned.TUNED_MOBILITY_MG}", source, flags=re.M)
+        source = re.sub(r"^MOBILITY_EG = \([^)]*\)$",
+                        f"MOBILITY_EG = {tuned.TUNED_MOBILITY_EG}", source, flags=re.M)
     source = re.sub(r"^PASSED_MG = \([^)]*\)$", f"PASSED_MG = {tuned.TUNED_PASSED_MG}",
                     source, flags=re.M)
     source = re.sub(r"^PASSED_EG = \([^)]*\)$", f"PASSED_EG = {tuned.TUNED_PASSED_EG}",
@@ -134,7 +142,8 @@ def patch(agent_path: str, tables_path: str, out_path: str) -> str:
         if count != 1:
             raise SystemExit(f"could not find {key}")
 
-    open(out_path, "w").write(source)
+    with open(out_path, "w") as handle:
+        handle.write(source)
     return out_path
 
 
@@ -145,7 +154,7 @@ def verify(out_path: str, tables_path: str, tune_dir: str) -> bool:
     the two numbers diverge.
     """
     sys.path.insert(0, tune_dir)
-    import tune  # noqa: PLC0415
+    import tune
 
     patched = load_module("patched_agent", out_path)
     weights = tune.current_parameters(out_path)
@@ -161,7 +170,7 @@ def verify(out_path: str, tables_path: str, tune_dir: str) -> bool:
             board.push(random.choice(moves))
         if board.is_game_over() or board.halfmove_clock != 0:
             continue
-        searcher = patched.Searcher(1e18)
+        searcher = patched.Searcher(1e18, board.turn)
         searcher.seed(board)
         side = searcher.evaluate(board) - patched.TEMPO
         white = side if board.turn == chess.WHITE else -side

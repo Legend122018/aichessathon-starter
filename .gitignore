@@ -9,3 +9,9 @@ submission.zip
 overnight/data/
 overnight/*.exe
 overnight/tune_sample.csv
+overnight/exemplar_contempt/
+submission_exemplar.zip
+overnight/exemplar_timefix/
+overnight/exemplar_nobook/
+overnight/book.npz
+overnight/book_build.log

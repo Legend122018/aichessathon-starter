@@ -21,11 +21,14 @@ per-move exchange is one request and one reply, which is the shape of the real p
 from __future__ import annotations
 
 import argparse
+import contextlib
 import importlib.util
 import multiprocessing as mp
 import os
+import pathlib
 import random
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -45,7 +48,7 @@ PIECE_VALUE = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3,
 
 def material(board: chess.Board) -> int:
     total = 0
-    for square, piece in board.piece_map().items():
+    for _square, piece in board.piece_map().items():
         value = PIECE_VALUE[piece.piece_type]
         total += value if piece.color == chess.WHITE else -value
     return total
@@ -70,24 +73,37 @@ def engine_process(conn, path: str, cores: list[int]) -> None:
     cleared by hand instead, which is the same thing the old harness did.
     """
     pin(cores)
+    # The platform puts the zip root first on sys.path, so an agent that ships a package
+    # beside it imports cleanly. Do the same here or such an agent cannot be measured.
+    root = str(pathlib.Path(path).resolve().parent)
+    if root not in sys.path:
+        sys.path.insert(0, root)
     spec = importlib.util.spec_from_file_location("arena_agent", path)
     module = importlib.util.module_from_spec(spec)
     sys.modules["arena_agent"] = module
     spec.loader.exec_module(module)
-    conn.send(("ready", bool(getattr(module, "JIT_READY", False))))
+    # None means "the engine does not use this convention", which is not a failure.
+    flag = getattr(module, "JIT_READY", None)
+    conn.send(("ready", None if flag is None else bool(flag)))
 
     while True:
         message = conn.recv()
         if message[0] == "stop":
             # Let any background search finish before the process goes away.
-            stop = getattr(module, "_ponder_stop", None)
-            if stop is not None:
-                stop()
+            for name in ("_ponder_stop", "_stop_ponder"):
+                stop = getattr(module, name, None)
+                if callable(stop):
+                    stop()
             return
         if message[0] == "reset":
-            stop = getattr(module, "_ponder_stop", None)
-            if stop is not None:
-                stop()
+            for name in ("_ponder_stop", "_stop_ponder"):
+                stop = getattr(module, name, None)
+                if callable(stop):
+                    stop()
+            reset_hook = getattr(module, "new_game", None) or getattr(module, "reset", None)
+            if callable(reset_hook):
+                with contextlib.suppress(Exception):
+                    reset_hook()
             for name in ("SEEN", "TT", "HISTORY", "COUNTER"):
                 holder = getattr(module, name, None)
                 if isinstance(holder, dict):
@@ -116,10 +132,20 @@ def engine_process(conn, path: str, cores: list[int]) -> None:
                 conn.send(("error", repr(exc)[:200]))
 
 
-def opening(rng: random.Random) -> chess.Board:
+def opening(rng: random.Random, low: int = 4, high: int = 8) -> chess.Board:
+    """A starting position, `low` to `high` random plies from the initial one.
+
+    Random plies buy diverse games, and for anything inside the search that is exactly
+    what you want. For an opening book it destroys the measurement: four to eight random
+    moves leave book lines immediately - none of fifty such positions were in ours - so
+    the booked engine and the unbooked one play an identical game and the match returns
+    the noise floor. Pass `--opening-plies 0` to start where a real game starts.
+    """
+    if high <= 0:
+        return chess.Board()
     for _ in range(60):
         board = chess.Board()
-        for _ in range(rng.randint(4, 8)):
+        for _ in range(rng.randint(low, high)):
             moves = list(board.legal_moves)
             if not moves:
                 break
@@ -183,6 +209,10 @@ def main() -> None:
     parser.add_argument("--max-minutes", type=float, default=0.0)
     parser.add_argument("--smt-stride", type=int, default=2)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--opening-plies", default="4:8",
+                        help="random plies before the game starts, MIN:MAX. "
+                             "Use 0 to start from the initial position, which is "
+                             "the only way to measure an opening book.")
     args = parser.parse_args()
 
     total_cores = os.cpu_count() or 2
@@ -212,25 +242,57 @@ def main() -> None:
 
     for pair in slots:
         for conn, _ in pair:
-            tag, ready = conn.recv()
-            if not ready:
+            _tag, ready = conn.recv()
+            if ready is None:
+                # No readiness flag at all. That is not a problem, it is a different
+                # engine: JIT_READY is this repo's own convention and the exemplar warms
+                # up at import without setting it. Warning here said the JIT had failed
+                # when it had not, on every process of every run.
+                print("note: engine exposes no JIT_READY flag; warmed at import",
+                      flush=True)
+            elif not ready:
                 print("warning: an engine came up without its JIT", flush=True)
     print("engines up, playing", flush=True)
+
+    parts = str(args.opening_plies).split(":")
+    low = int(parts[0])
+    high = int(parts[-1])
+    shape = "initial position" if high <= 0 else f"{low}-{high} random plies"
+    print(f"openings: {shape}", flush=True)
 
     rng = random.Random(args.seed)
     wins = draws = losses = 0
     started = time.monotonic()
     verdict = 2
+
+    def play_slot(pair, start, out: list) -> None:
+        """One slot's pair of games: the same opening from both colours."""
+        (cand, _), (champ, _) = pair
+        out.append(play(cand, champ, start, args.base_ms, args.inc_ms))
+        out.append(1.0 - play(champ, cand, start, args.base_ms, args.inc_ms))
+
     try:
         while wins + draws + losses < args.max_games:
-            start = opening(rng)
-            for pair in slots:
-                (cand, _), (champ, _) = pair
-                for candidate_is_white in (True, False):
-                    if candidate_is_white:
-                        score = play(cand, champ, start, args.base_ms, args.inc_ms)
-                    else:
-                        score = 1.0 - play(champ, cand, start, args.base_ms, args.inc_ms)
+            # The slots run at the same time. They did not before: `play` blocks on a
+            # pipe until the engine answers, so iterating over the slots played them one
+            # after another and left twelve of the fourteen processes idle. The header
+            # has always said "7 concurrent games" and it has never been true, which is
+            # most of why a match here costs hours and why nothing in this engine has
+            # ever been measured to better than about +-50 Elo.
+            #
+            # Threads rather than processes because the referee does nothing but wait:
+            # every recv releases the GIL, and the actual work is in the child
+            # processes, each already pinned to its own core.
+            batch = [(pair, opening(rng, low, high), []) for pair in slots]
+            threads = [threading.Thread(target=play_slot, args=(pair, start, out))
+                       for pair, start, out in batch]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+
+            for _pair, _start, out in batch:
+                for score in out:
                     if score == 1.0:
                         wins += 1
                     elif score == 0.0:
@@ -259,10 +321,8 @@ def main() -> None:
     finally:
         for pair in slots:
             for conn, proc in pair:
-                try:
+                with contextlib.suppress(Exception):
                     conn.send(("stop",))
-                except Exception:
-                    pass
                 proc.join(timeout=5)
                 if proc.is_alive():
                     proc.terminate()

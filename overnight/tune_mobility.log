@@ -1,0 +1,75 @@
+feature check: worst disagreement 1.88 cp over 300 positions
+featurising positions...
+  featurised 100000
+  featurised 200000
+  featurised 300000
+  featurised 400000
+  featurised 500000
+  featurised 600000
+  featurised 700000
+  featurised 800000
+  featurised 900000
+  featurised 1000000
+  featurised 1100000
+  featurised 1200000
+  featurised 1300000
+  featurised 1400000
+  featurised 1500000
+  featurised 1600000
+  featurised 1700000
+  featurised 1800000
+  featurised 1900000
+  featurised 2000000
+  featurised 2100000
+  featurised 2200000
+  featurised 2300000
+  featurised 2400000
+  featurised 2500000
+  featurised 2600000
+  featurised 2700000
+  featurised 2800000
+  featurised 2900000
+  featurised 3000000
+  featurised 3100000
+  featurised 3200000
+  featurised 3300000
+  featurised 3400000
+  featurised 3500000
+  featurised 3600000
+  featurised 3700000
+  featurised 3800000
+  featurised 3900000
+  featurised 4000000
+  featurised 4100000
+  featurised 4200000
+  featurised 4300000
+  featurised 4400000
+  featurised 4500000
+4553528 positions, 797 parameters
+sigmoid scale K = 410   starting loss 0.012280
+  step   250/6000  validation 0.012120  (384s)
+  step   500/6000  validation 0.012096  (385s)
+  step   750/6000  validation 0.012092  (386s)
+  step  1000/6000  validation 0.012083  (386s)
+  step  1250/6000  validation 0.012061  (387s)
+  step  1500/6000  validation 0.012062  (388s)
+  step  1750/6000  validation 0.012045  (389s)
+  step  2000/6000  validation 0.012046  (390s)
+  step  2250/6000  validation 0.012045  (390s)
+  step  2500/6000  validation 0.012043  (391s)
+  step  2750/6000  validation 0.012043  (392s)
+  step  3000/6000  validation 0.012042  (393s)
+  step  3250/6000  validation 0.012033  (394s)
+  step  3500/6000  validation 0.012037  (394s)
+  step  3750/6000  validation 0.012040  (395s)
+  step  4000/6000  validation 0.012038  (396s)
+  step  4250/6000  validation 0.012040  (397s)
+  step  4500/6000  validation 0.012043  (398s)
+  step  4750/6000  validation 0.012037  (398s)
+  step  5000/6000  validation 0.012039  (399s)
+  step  5250/6000  validation 0.012044  (400s)
+  step  5500/6000  validation 0.012042  (401s)
+  step  5750/6000  validation 0.012046  (402s)
+  step  6000/6000  validation 0.012050  (402s)
+best validation 0.012033 (started 0.012280, +2.0%)
+wrote overnight/tuned_mobility.py

@@ -1,0 +1,737 @@
+<title>Chessathon Engine</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<style>
+:root{
+  --ground:#E8E9E6; --panel:#F4F5F2; --panel-2:#DDDFD9;
+  --ink:#1B1F1D; --ink-2:#535A55; --ink-3:#828A83;
+  --line:#C6CAC2; --brass:#8A6A2F; --brass-hi:#B08A46;
+  --sq-light:#C9CABE; --sq-dark:#68766F;
+  --piece-w:#FBFBF8; --piece-b:#20262A;
+  --good:#3F6B4A; --bad:#8C4232; --sel:#B08A46;
+  --shadow:0 1px 2px rgba(20,26,22,.10),0 8px 24px -12px rgba(20,26,22,.30);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#161A1D; --panel:#1D2226; --panel-2:#252B30;
+    --ink:#E6E8E4; --ink-2:#A2AAA6; --ink-3:#727B78;
+    --line:#2E353A; --brass:#C69A4E; --brass-hi:#DDB86A;
+    --sq-light:#8E968C; --sq-dark:#4A5654;
+    --piece-w:#F2F3EE; --piece-b:#14181B;
+    --good:#7FB08A; --bad:#D08A76;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#161A1D; --panel:#1D2226; --panel-2:#252B30;
+  --ink:#E6E8E4; --ink-2:#A2AAA6; --ink-3:#727B78;
+  --line:#2E353A; --brass:#C69A4E; --brass-hi:#DDB86A;
+  --sq-light:#8E968C; --sq-dark:#4A5654;
+  --piece-w:#F2F3EE; --piece-b:#14181B;
+  --good:#7FB08A; --bad:#D08A76;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);
+  font-family:"Source Serif 4",Georgia,serif;line-height:1.55;}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 56px;}
+h1,h2,h3,.ui{font-family:Archivo,"Helvetica Neue",Arial,sans-serif;}
+header{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:baseline;
+  border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:24px;}
+h1{font-size:clamp(24px,3.4vw,34px);font-weight:700;letter-spacing:-.02em;margin:0;
+  text-wrap:balance;}
+.tag{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.10em;
+  text-transform:uppercase;color:var(--brass);border:1px solid var(--brass);
+  padding:3px 8px;border-radius:2px;}
+.lede{color:var(--ink-2);font-size:15px;max-width:64ch;margin:0;}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:28px;align-items:start;}
+@media (max-width:880px){.main{grid-template-columns:minmax(0,1fr)}}
+
+/* board */
+.boardwrap{display:flex;flex-direction:column;gap:10px;}
+.board{display:grid;grid-template-columns:repeat(8,1fr);aspect-ratio:1;width:100%;
+  border:1px solid var(--line);box-shadow:var(--shadow);}
+.sq{position:relative;display:flex;align-items:center;justify-content:center;
+  font-size:clamp(24px,6.4vw,50px);line-height:1;cursor:pointer;user-select:none;
+  -webkit-tap-highlight-color:transparent;}
+.sq.l{background:var(--sq-light)} .sq.d{background:var(--sq-dark)}
+.sq.sel{outline:3px solid var(--sel);outline-offset:-3px;}
+.sq.last{box-shadow:inset 0 0 0 3px color-mix(in srgb,var(--brass) 55%,transparent);}
+.sq.chk{background:var(--bad)!important;}
+.sq .dot{position:absolute;width:26%;height:26%;border-radius:50%;
+  background:color-mix(in srgb,var(--sel) 70%,transparent);pointer-events:none;}
+.sq .ring{position:absolute;inset:6%;border-radius:50%;pointer-events:none;
+  border:3px solid color-mix(in srgb,var(--sel) 70%,transparent);}
+.pc{pointer-events:none}
+.pc.w{color:var(--piece-w);text-shadow:0 0 1px var(--piece-b),0 1px 1px rgba(0,0,0,.45),
+  -1px 0 0 var(--piece-b),1px 0 0 var(--piece-b),0 -1px 0 var(--piece-b),0 1px 0 var(--piece-b);}
+.pc.b{color:var(--piece-b);text-shadow:0 1px 1px rgba(0,0,0,.25);}
+.coords{display:flex;justify-content:space-between;font-family:"JetBrains Mono",monospace;
+  font-size:11px;color:var(--ink-3);letter-spacing:.08em;}
+
+.status{font-family:Archivo,sans-serif;font-weight:600;font-size:15px;min-height:24px;
+  display:flex;align-items:center;gap:9px;}
+.dotlive{width:8px;height:8px;border-radius:50%;background:var(--brass);flex:none;}
+.dotlive.think{animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.dotlive.think{animation:none}}
+
+/* controls */
+.controls{display:flex;flex-wrap:wrap;gap:8px;}
+button,select{font-family:Archivo,sans-serif;font-size:13px;font-weight:600;
+  background:var(--panel);color:var(--ink);border:1px solid var(--line);
+  padding:7px 13px;border-radius:3px;cursor:pointer;}
+button:hover,select:hover{border-color:var(--brass);}
+button:focus-visible,select:focus-visible,.sq:focus-visible{outline:2px solid var(--brass-hi);outline-offset:2px;}
+button.primary{background:var(--brass);color:var(--panel);border-color:var(--brass);}
+button:disabled{opacity:.45;cursor:not-allowed;}
+label.ui{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);
+  display:block;margin-bottom:4px;font-weight:600;}
+
+/* rail */
+.rail{display:flex;flex-direction:column;gap:18px;}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:14px 15px;}
+.card h3{font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);
+  margin:0 0 11px;font-weight:600;}
+.readout{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;
+  font-family:"JetBrains Mono",monospace;font-size:12.5px;font-variant-numeric:tabular-nums;}
+.readout dt{color:var(--ink-3);} .readout dd{margin:0;text-align:right;color:var(--ink);}
+.evalbar{height:7px;background:var(--panel-2);border-radius:99px;overflow:hidden;margin-top:12px;}
+.evalfill{height:100%;background:var(--brass);width:50%;transition:width .35s ease;}
+@media (prefers-reduced-motion:reduce){.evalfill{transition:none}}
+.moves{font-family:"JetBrains Mono",monospace;font-size:12px;max-height:230px;overflow-y:auto;
+  display:grid;grid-template-columns:2.2em 1fr 1fr;gap:2px 8px;font-variant-numeric:tabular-nums;}
+.moves .n{color:var(--ink-3)}
+.opts{display:flex;flex-direction:column;gap:11px;}
+.row{display:flex;gap:9px;align-items:center;justify-content:space-between;font-size:13px;
+  font-family:Archivo,sans-serif;}
+.switch{position:relative;width:38px;height:21px;flex:none;}
+.switch input{opacity:0;width:100%;height:100%;margin:0;cursor:pointer;}
+.slider{position:absolute;inset:0;background:var(--panel-2);border:1px solid var(--line);
+  border-radius:99px;transition:.2s;pointer-events:none;}
+.slider::after{content:"";position:absolute;width:15px;height:15px;border-radius:50%;
+  background:var(--ink-3);top:2px;left:2px;transition:.2s;}
+.switch input:checked+.slider{background:color-mix(in srgb,var(--brass) 35%,transparent);
+  border-color:var(--brass);}
+.switch input:checked+.slider::after{transform:translateX(17px);background:var(--brass);}
+.switch input:focus-visible+.slider{outline:2px solid var(--brass-hi);outline-offset:2px;}
+.hint{font-size:12.5px;color:var(--ink-3);margin:7px 0 0;line-height:1.45;}
+
+/* notes */
+.notes{margin-top:34px;border-top:1px solid var(--line);padding-top:24px;}
+.notegrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:22px;}
+.notegrid h3{font-size:13px;margin:0 0 6px;letter-spacing:0;text-transform:none;color:var(--ink);}
+.notegrid p{margin:0;font-size:13.5px;color:var(--ink-2);}
+.measure{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;}
+.measure th{font-family:Archivo,sans-serif;font-size:10.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--ink-3);text-align:left;font-weight:600;
+  padding:0 10px 6px 0;border-bottom:1px solid var(--line);}
+.measure td{padding:6px 10px 6px 0;border-bottom:1px solid var(--line);color:var(--ink-2);}
+.measure td.num{font-family:"JetBrains Mono",monospace;font-variant-numeric:tabular-nums;
+  color:var(--ink);white-space:nowrap;}
+.tablewrap{overflow-x:auto;}
+.caveat{background:var(--panel);border-left:3px solid var(--brass);padding:12px 15px;
+  margin-top:20px;font-size:13.5px;color:var(--ink-2);border-radius:0 3px 3px 0;}
+.caveat strong{color:var(--ink);font-family:Archivo,sans-serif;font-weight:600;}
+footer{margin-top:30px;font-size:12px;color:var(--ink-3);}
+.promo{position:fixed;inset:0;background:rgba(10,12,14,.55);display:none;
+  align-items:center;justify-content:center;z-index:20;}
+.promo.on{display:flex}
+.promo .pick{background:var(--panel);border:1px solid var(--line);border-radius:5px;
+  padding:16px 18px;box-shadow:var(--shadow);text-align:center;}
+.promo .pick div{font-family:Archivo,sans-serif;font-size:13px;font-weight:600;margin-bottom:10px;}
+.promo button{font-size:30px;padding:5px 11px;line-height:1;}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>Chessathon Engine</h1>
+  <span class="tag">tournament setup</span>
+  <p class="lede">Play the search and evaluation from an AI&nbsp;Chessathon submission, set up the way it
+  competes: negamax with alpha&ndash;beta, quiescence and a transposition table, over piece&ndash;square
+  tables fitted from self-play by Texel&rsquo;s method, on a 120&nbsp;second tournament clock it budgets
+  for itself.</p>
+</header>
+
+<div class="main">
+  <div class="boardwrap">
+    <div class="board" id="board" role="grid" aria-label="Chess board"></div>
+    <div class="coords"><span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span></div>
+    <div class="status" id="status"><span class="dotlive" id="live"></span><span id="statustext">Your move &mdash; you are White.</span></div>
+    <div class="controls">
+      <button class="primary" id="newgame">New game</button>
+      <button id="undo">Undo</button>
+      <button id="flip">Play as Black</button>
+
+    </div>
+  </div>
+
+  <div class="rail">
+    <div class="card">
+      <h3>Engine readout</h3>
+      <dl class="readout">
+        <dt>depth</dt><dd id="r-depth">&mdash;</dd>
+        <dt>eval</dt><dd id="r-eval">&mdash;</dd>
+        <dt>nodes</dt><dd id="r-nodes">&mdash;</dd>
+        <dt>time</dt><dd id="r-time">&mdash;</dd>
+        <dt>played</dt><dd id="r-move">&mdash;</dd>
+      </dl>
+      <div class="evalbar"><div class="evalfill" id="evalfill"></div></div>
+      <p class="hint" id="evalnote">Centipawns from White&rsquo;s side. Positive favours White.</p>
+    </div>
+
+    <div class="card">
+      <h3>Tournament clock</h3>
+      <dl class="readout">
+        <dt>engine</dt><dd id="r-clock">2:00.0</dd>
+        <dt>budget</dt><dd id="r-budget">&mdash;</dd>
+        <dt>tournament</dt><dd id="r-tournament">&mdash;</dd>
+        <dt>you</dt><dd id="r-yourclock">0:00</dd>
+      </dl>
+      <p class="hint">The engine plays the competition control &mdash; 120 seconds plus 0.5 per move
+      &mdash; and divides it with the submission's own formula: <em>tournament</em> is what that formula
+      asks for, <em>budget</em> what it is allowed here. The two differ because the submission is compiled
+      and searches on a dedicated core, where six seconds buys real depth; in a browser tab it would only
+      buy a long wait, so the ceiling is 6s soft and 11s hard. The shape is unchanged &mdash; the
+      middlegame still gets more than the endgame, and a settled move still leaves early. Your own clock
+      counts up but is not enforced.</p>
+    </div>
+
+    <div class="card">
+      <h3>Contempt</h3>
+      <p class="hint" style="margin-top:0;">A repetition scores 24cp <em>below</em> zero, so the engine
+      declines one it could take while anything better is on offer &mdash; and still accepts the draw when
+      every alternative is worse. It is on, as it is in the submission: worth +10.5 &plusmn; 14.8 Elo over
+      2,120 games.</p>
+    </div>
+
+    <div class="card">
+      <h3>Moves</h3>
+      <div class="moves" id="moves"></div>
+    </div>
+  </div>
+</div>
+
+<div class="notes">
+  <div class="notegrid">
+    <div>
+      <h3>Where the tables came from</h3>
+      <p>Every piece&ndash;square value was fitted rather than borrowed. The starting point was textbook
+      material only &mdash; 100/320/330/500/900, no per-square structure &mdash; and Texel&rsquo;s method
+      supplied each deviation from self-play positions labelled offline.</p>
+    </div>
+    <div>
+      <h3>How changes were judged</h3>
+      <p>Nothing shipped because it looked right. Each candidate played its predecessor under SPRT until
+      the result was decided, at thousands of games per test, and lost the argument if it could not win
+      the match.</p>
+    </div>
+    <div>
+      <h3>What it does on its own clock</h3>
+      <p>The competition build thinks while the opponent does, predicting the reply from the transposition
+      table and searching the position it expects next. The prediction lands about four times in five.</p>
+    </div>
+  </div>
+
+  <div class="tablewrap">
+  <table class="measure">
+    <caption class="hint" style="text-align:left;margin-bottom:8px;">Measured against the engine&rsquo;s own previous version.</caption>
+    <tr><th>Change</th><th>Games</th><th>Result</th></tr>
+    <tr><td>Pondering on the opponent&rsquo;s clock</td><td class="num">182</td><td class="num">+38 &plusmn; 44</td></tr>
+    <tr><td>Contempt &amp; aspiration window</td><td class="num">2,120</td><td class="num">+10.5 &plusmn; 14.8</td></tr>
+    <tr><td>Dead-draw recognition</td><td class="num">3,640</td><td class="num">neutral, corrects a blunder</td></tr>
+  </table>
+  </div>
+
+  <div class="caveat">
+    <strong>One setting, and it is the competition one.</strong> There is no difficulty menu: the engine
+    plays the clock it will actually be given &mdash; 120&nbsp;seconds plus 0.5 per move &mdash; and divides
+    it with the submission's own formula, spending about five and a half seconds on an opening move and
+    abandoning any search that runs past three times that. What differs is speed, not settings. The
+    submission is Python compiled with numba on a dedicated core, and it thinks on its opponent's clock
+    as well; this is JavaScript in a browser tab with no pondering, so the same seconds buy fewer ply, and
+    the per-move budget is capped a little under what the formula asks for.
+    It shares the tuned tables, the search, the contempt and the time management &mdash; beating it here
+    is not the same as beating the submission.
+  </div>
+  <footer>Move generation by chess.js. Evaluation and search ported from <code>agent.py</code>.</footer>
+</div>
+</div>
+
+<div class="promo" id="promo"><div class="pick"><div>Promote to</div>
+  <button data-p="q">&#9819;</button><button data-p="r">&#9820;</button>
+  <button data-p="b">&#9821;</button><button data-p="n">&#9822;</button></div></div>
+
+<script>
+const T = {"MG":[[[100,100,100,100,100,100,100,100,148,143,142,162,152,88,41,86,124,115,141,156,163,177,121,148,96,124,121,133,135,130,131,99,83,92,104,112,116,99,95,84,83,93,97,71,80,89,126,82,60,91,82,50,54,117,115,68,100,100,100,100,100,100,100,100],[100,100,100,100,100,100,100,100,60,91,82,50,54,117,115,68,83,93,97,71,80,89,126,82,83,92,104,112,116,99,95,84,96,124,121,133,135,130,131,99,124,115,141,156,163,177,121,148,148,143,142,162,152,88,41,86,100,100,100,100,100,100,100,100]],[[100,100,100,100,100,100,100,100,148,143,142,162,152,88,41,86,124,115,141,156,163,177,121,148,96,124,121,133,135,130,131,99,83,92,104,112,116,99,95,84,83,93,97,71,80,89,126,82,60,91,82,50,54,117,115,68,100,100,100,100,100,100,100,100],[100,100,100,100,100,100,100,100,60,91,82,50,54,117,115,68,83,93,97,71,80,89,126,82,83,92,104,112,116,99,95,84,96,124,121,133,135,130,131,99,124,115,141,156,163,177,121,148,148,143,142,162,152,88,41,86,100,100,100,100,100,100,100,100]],[[253,285,304,431,439,195,362,386,399,369,487,464,409,501,359,456,396,492,484,523,564,537,516,420,455,445,468,489,481,498,474,466,432,410,447,445,453,463,454,440,391,424,435,439,450,444,450,410,362,388,407,407,419,434,410,392,318,378,361,407,403,395,388,356],[318,378,361,407,403,395,388,356,362,388,407,407,419,434,410,392,391,424,435,439,450,444,450,410,432,410,447,445,453,463,454,440,455,445,468,489,481,498,474,466,396,492,484,523,564,537,516,420,399,369,487,464,409,501,359,456,253,285,304,431,439,195,362,386]],[[346,328,346,320,286,238,365,385,377,418,447,412,400,466,407,435,412,469,443,526,476,510,493,450,433,438,437,472,485,468,451,444,456,426,445,453,462,446,416,451,429,454,447,441,438,447,461,422,455,449,436,418,433,431,447,426,422,425,398,396,407,394,402,395],[422,425,398,396,407,394,402,395,455,449,436,418,433,431,447,426,429,454,447,441,438,447,461,422,456,426,445,453,462,446,416,451,433,438,437,472,485,468,451,444,412,469,443,526,476,510,493,450,377,418,447,412,400,466,407,435,346,328,346,320,286,238,365,385]],[[567,572,602,650,601,628,597,608,579,574,622,658,655,652,612,627,549,586,607,652,649,637,645,576,538,540,560,580,589,604,572,566,520,526,541,537,549,543,532,527,505,533,522,527,549,544,544,533,497,513,527,530,535,551,520,495,520,528,535,548,557,550,527,528],[520,528,535,548,557,550,527,528,497,513,527,530,535,551,520,495,505,533,522,527,549,544,544,533,520,526,541,537,549,543,532,527,538,540,560,580,589,604,572,566,549,586,607,652,649,637,645,576,579,574,622,658,655,652,612,627,567,572,602,650,601,628,597,608]],[[1047,1118,1189,1232,1182,1234,1160,1086,1098,1038,1107,1083,1113,1161,1147,1119,1065,1082,1103,1137,1141,1187,1167,1125,1073,1078,1078,1094,1092,1098,1078,1114,1086,1101,1081,1079,1091,1075,1089,1085,1072,1089,1089,1088,1073,1090,1095,1095,1089,1095,1103,1095,1093,1101,1104,1094,1085,1087,1073,1077,1072,1077,1108,1072],[1085,1087,1073,1077,1072,1077,1108,1072,1089,1095,1103,1095,1093,1101,1104,1094,1072,1089,1089,1088,1073,1090,1095,1095,1086,1101,1081,1079,1091,1075,1089,1085,1073,1078,1078,1094,1092,1098,1078,1114,1065,1082,1103,1137,1141,1187,1167,1125,1098,1038,1107,1083,1113,1161,1147,1119,1047,1118,1189,1232,1182,1234,1160,1086]],[[94,189,164,160,102,241,183,159,121,120,19,23,59,47,100,94,6,9,-62,-124,-140,-53,-14,26,-113,-45,-101,-175,-172,-118,-36,-74,-105,-82,-138,-57,-122,-123,-81,-78,-39,-12,-63,-86,-100,-79,-30,-55,31,30,-14,-54,-67,-19,6,35,17,77,56,-35,13,-21,58,57],[17,77,56,-35,13,-21,58,57,31,30,-14,-54,-67,-19,6,35,-39,-12,-63,-86,-100,-79,-30,-55,-105,-82,-138,-57,-122,-123,-81,-78,-113,-45,-101,-175,-172,-118,-36,-74,6,9,-62,-124,-140,-53,-14,26,121,120,19,23,59,47,100,94,94,189,164,160,102,241,183,159]]],"EG":[[[100,100,100,100,100,100,100,100,163,186,177,169,204,197,203,172,102,118,104,80,79,100,117,85,101,104,104,96,92,106,102,93,100,104,92,87,91,100,106,100,99,108,98,101,102,115,98,92,109,115,128,135,124,123,119,106,100,100,100,100,100,100,100,100],[100,100,100,100,100,100,100,100,109,115,128,135,124,123,119,106,99,108,98,101,102,115,98,92,100,104,92,87,91,100,106,100,101,104,104,96,92,106,102,93,102,118,104,80,79,100,117,85,163,186,177,169,204,197,203,172,100,100,100,100,100,100,100,100]],[[100,100,100,100,100,100,100,100,163,186,177,169,204,197,203,172,102,118,104,80,79,100,117,85,101,104,104,96,92,106,102,93,100,104,92,87,91,100,106,100,99,108,98,101,102,115,98,92,109,115,128,135,124,123,119,106,100,100,100,100,100,100,100,100],[100,100,100,100,100,100,100,100,109,115,128,135,124,123,119,106,99,108,98,101,102,115,98,92,100,104,92,87,91,100,106,100,101,104,104,96,92,106,102,93,102,118,104,80,79,100,117,85,163,186,177,169,204,197,203,172,100,100,100,100,100,100,100,100]],[[105,205,241,184,199,254,184,74,196,226,197,231,239,204,229,209,215,226,249,243,218,238,212,220,231,261,255,260,266,255,254,233,234,248,266,268,275,258,241,227,241,259,254,266,272,255,255,226,219,257,245,264,259,245,234,224,246,214,261,241,252,244,228,180],[246,214,261,241,252,244,228,180,219,257,245,264,259,245,234,224,241,259,254,266,272,255,255,226,234,248,266,268,275,258,241,227,231,261,255,260,266,255,254,233,215,226,249,243,218,238,212,220,196,226,197,231,239,204,229,209,105,205,241,184,199,254,184,74]],[[278,270,283,269,270,295,269,273,270,266,256,268,269,247,264,233,269,254,279,255,262,257,244,255,253,269,272,278,254,250,276,245,232,265,285,272,272,274,262,232,265,267,271,279,278,273,252,262,250,251,264,268,269,266,264,267,278,264,249,262,258,268,252,273],[278,264,249,262,258,268,252,273,250,251,264,268,269,266,264,267,265,267,271,279,278,273,252,262,232,265,285,272,272,274,262,232,253,269,272,278,254,250,276,245,269,254,279,255,262,257,244,255,270,266,256,268,269,247,264,233,278,270,283,269,270,295,269,273]],[[453,450,443,426,435,436,443,444,447,450,439,430,427,421,435,425,446,433,427,410,405,415,409,434,452,457,444,440,427,417,426,427,456,444,454,452,442,441,433,450,450,449,457,448,438,445,438,441,451,447,435,445,443,433,434,445,448,450,447,440,441,440,454,426],[448,450,447,440,441,440,454,426,451,447,435,445,443,433,434,445,450,449,457,448,438,445,438,441,456,444,454,452,442,441,433,450,452,457,444,440,427,417,426,427,446,433,427,410,405,415,409,434,447,450,439,430,427,421,435,425,453,450,443,426,435,436,443,444]],[[770,750,719,736,779,706,727,768,782,836,823,858,846,820,783,799,805,792,825,831,845,819,816,803,775,805,849,866,869,875,860,805,737,754,825,853,822,835,793,795,751,752,785,788,813,784,768,755,724,717,734,748,733,737,671,703,740,713,714,731,710,666,613,717],[740,713,714,731,710,666,613,717,724,717,734,748,733,737,671,703,751,752,785,788,813,784,768,755,737,754,825,853,822,835,793,795,775,805,849,866,869,875,860,805,805,792,825,831,845,819,816,803,782,836,823,858,846,820,783,799,770,750,719,736,779,706,727,768]],[[-66,-39,-9,-27,-7,-64,-61,-97,-26,5,46,34,22,34,-4,-31,-2,40,62,57,63,52,36,-24,9,30,48,58,53,48,17,-16,-36,24,34,19,33,28,20,-26,-19,-11,14,15,22,16,-2,-20,-32,-18,-3,2,11,4,-8,-33,-16,-47,-46,-39,-51,-24,-44,-43],[-16,-47,-46,-39,-51,-24,-44,-43,-32,-18,-3,2,11,4,-8,-33,-19,-11,14,15,22,16,-2,-20,-36,24,34,19,33,28,20,-26,9,30,48,58,53,48,17,-16,-2,40,62,57,63,52,36,-24,-26,5,46,34,22,34,-4,-31,-66,-39,-9,-27,-7,-64,-61,-97]]],"PW":[0,0,1,1,2,4,0],"TP":24,"BPM":56,"BPE":44,"ROF":54,"RSF":35,"TEMPO":12,"CONT":24,"CW":400,"MOP":450,"CD":[6,5,4,3,3,4,5,6,5,4,3,2,2,3,4,5,4,3,2,1,1,2,3,4,3,2,1,0,0,1,2,3,3,2,1,0,0,1,2,3,4,3,2,1,1,2,3,4,5,4,3,2,2,3,4,5,6,5,4,3,3,4,5,6],"PMG":[0,-5,-30,-23,-4,15,27,0],"PEG":[0,8,26,43,52,89,110,0],"IMG":16,"IEG":7,"DMG":7,"DEG":25,"SEE":[0,100,320,330,500,900,20000]};
+const GLYPH = {p:"♟",n:"♞",b:"♝",r:"♜",q:"♛",k:"♚"};
+const IDX = {p:1,n:2,b:3,r:4,q:5,k:6};
+const MATE = 30000;
+
+const game = new Chess();
+let human = "w", selected = null, legalTargets = [], lastMove = null, thinking = false;
+let pendingPromo = null;
+
+/* The competition control, and the engine's own division of it, ported from agent.py so
+   the engine spends its time here as it would in a rated game: soft is the point past
+   which it will not start another iteration, hard the point it abandons the search and
+   plays the best move it has. A flag loses outright, so both sit inside the clock. */
+const BASE_MS = 120000, INC_MS = 500, SAFETY_MS = 300, PANIC_MS = 250;
+/* The tournament split hands an opening move 5.8s soft and 17.4s hard. That is right for
+   the submission, which is compiled and searches on a dedicated core; in a browser tab it
+   is just a long wait for a shallower answer. These cap the wall clock without changing
+   the shape of the allocation - the middlegame still gets more than the endgame, and a
+   settled move still leaves early. */
+const CAP_SOFT = 6000, CAP_HARD = 11000;
+let engineClock = BASE_MS, yourClock = 0, yourTickFrom = 0, yourTimer = null;
+
+function budgetMs(){
+  const usable = Math.max(0, engineClock - SAFETY_MS);
+  const rows = game.board();
+  let pieces = 0;
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) if (rows[r][c]) pieces++;
+  const expected = pieces > 20 ? 22 : (pieces > 10 ? 28 : 18);
+  let soft = usable / expected + INC_MS * 0.7;
+  soft = Math.min(soft, usable * 0.25);
+  const hard = Math.min(soft * 3.0, usable * 0.45);
+  return {
+    soft: Math.min(Math.max(soft, 10), CAP_SOFT),
+    hard: Math.min(Math.max(hard, 20), CAP_HARD),
+    tournamentSoft: Math.max(soft, 10),
+  };
+}
+function fmtClock(ms){
+  if (ms < 0) ms = 0;
+  const t = ms / 1000, m = Math.floor(t / 60), sec = t - m * 60;
+  return m + ":" + (sec < 10 ? "0" : "") + sec.toFixed(1);
+}
+function paintClocks(){
+  document.getElementById("r-clock").textContent = fmtClock(engineClock);
+  const ms = yourClock + (yourTickFrom ? performance.now() - yourTickFrom : 0);
+  const t = Math.floor(ms / 1000);
+  document.getElementById("r-yourclock").textContent =
+    Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0");
+}
+function startYourClock(){
+  if (yourTickFrom) return;
+  yourTickFrom = performance.now();
+  yourTimer = setInterval(paintClocks, 100);
+}
+function stopYourClock(){
+  if (!yourTickFrom) return;
+  yourClock += performance.now() - yourTickFrom;
+  yourTickFrom = 0;
+  clearInterval(yourTimer); yourTimer = null;
+  paintClocks();
+}
+
+/* ---------- evaluation: material + tuned piece-square tables, tapered ---------- */
+function boardArrays(){
+  const b = game.board(), sq = new Array(64).fill(null);
+  for (let r=0;r<8;r++) for (let c=0;c<8;c++){
+    const p = b[r][c];
+    if (p) sq[(7-r)*8+c] = p;           // python-chess square index: a1=0
+  }
+  return sq;
+}
+function evaluate(){
+  const sq = boardArrays();
+  let mg=0, eg=0, phase=0;
+  let wb=0, bb=0, wp=0, bp=0, wnpm=0, bnpm=0, wk=-1, bk=-1;
+  const wf=[0,0,0,0,0,0,0,0], bf=[0,0,0,0,0,0,0,0];
+  const wtop=[-1,-1,-1,-1,-1,-1,-1,-1], bbot=[8,8,8,8,8,8,8,8];
+  for (let s=0;s<64;s++){
+    const p = sq[s]; if (!p) continue;
+    const k = IDX[p.type], white = p.color==="w", ci = white?1:0;
+    if (white){ mg += T.MG[k][1][s]; eg += T.EG[k][1][s]; }
+    else      { mg -= T.MG[k][0][s]; eg -= T.EG[k][0][s]; }
+    phase += T.PW[k];
+    const file = s&7, rank = s>>3;
+    if (k===1){ if(white){wp++; wf[file]++; if(rank>wtop[file])wtop[file]=rank;}
+                else {bp++; bf[file]++; if(rank<bbot[file])bbot[file]=rank;} }
+    else if (k===3){ white?wb++:bb++; }
+    else if (k===6){ white?(wk=s):(bk=s); }
+    if (k>=2 && k<=5){ white ? (wnpm += T.SEE[k]) : (bnpm += T.SEE[k]); }
+  }
+  if (wb>1){ mg += T.BPM; eg += T.BPE; }
+  if (bb>1){ mg -= T.BPM; eg -= T.BPE; }
+  for (let s=0;s<64;s++){
+    const p = sq[s]; if (!p) continue;
+    const k = IDX[p.type], file = s&7, rank = s>>3, white = p.color==="w";
+    if (k===4){
+      if (white && wf[file]===0) mg += bf[file]?T.RSF:T.ROF;
+      if (!white && bf[file]===0) mg -= wf[file]?T.RSF:T.ROF;
+    } else if (k===1){
+      const lo = file>0?file-1:0, hi = file<7?file+1:7;
+      if (white){
+        let blocked=false; for(let f=lo;f<=hi;f++) if(bbot[f]<8 && bbot[f]>rank) blocked=true;
+        if(!blocked){ mg += T.PMG[rank]; eg += T.PEG[rank]; }
+        if((file>0?wf[file-1]:0)===0 && (file<7?wf[file+1]:0)===0){ mg -= T.IMG; eg -= T.IEG; }
+        if(wtop[file]>rank){ mg -= T.DMG; eg -= T.DEG; }
+      } else {
+        const rel = 7-rank;
+        let blocked=false; for(let f=lo;f<=hi;f++) if(wtop[f]>=0 && wtop[f]<rank) blocked=true;
+        if(!blocked){ mg -= T.PMG[rel]; eg -= T.PEG[rel]; }
+        if((file>0?bf[file-1]:0)===0 && (file<7?bf[file+1]:0)===0){ mg += T.IMG; eg += T.IEG; }
+        if(bbot[file]<rank){ mg += T.DMG; eg += T.DEG; }
+      }
+    }
+  }
+  if (phase > T.TP) phase = T.TP;
+  let score = Math.trunc((mg*phase + eg*(T.TP-phase)) / T.TP);
+
+  // A pawnless side under a rook ahead cannot force a win: KB vs K, KR vs KB, KR vs KR.
+  if (score !== 0){
+    const strongPawns = score>0 ? wp : bp;
+    const diff = score>0 ? wnpm-bnpm : bnpm-wnpm;
+    if (strongPawns===0 && diff < T.CW) score = Math.trunc(score/16);
+  }
+  // Mop-up: with a decisive lead and no enemy pawns, drive their king to the edge.
+  if (score > T.MOP || score < -T.MOP){
+    const sw = score>0;
+    const weakPawns = sw?bp:wp, weakK = sw?bk:wk, strongK = sw?wk:bk;
+    if (weakPawns===0 && weakK>=0 && strongK>=0){
+      const spread = Math.abs((weakK>>3)-(strongK>>3)) + Math.abs((weakK&7)-(strongK&7));
+      const bonus = 47*T.CD[((7-(weakK>>3))*8)+(weakK&7)] + 16*(14-spread);
+      score += sw ? bonus : -bonus;
+    }
+  }
+  if (game.turn()==="b") score = -score;
+  return score + T.TEMPO;
+}
+
+/* ---------- search: negamax, alpha-beta, quiescence, TT, MVV-LVA + killers ---------- */
+let nodes=0, deadline=0, stopped=false;
+const useContempt = true;   // on, as it is in the submission
+const TT = new Map();
+const killers = [];
+function posKey(){ const f=game.fen(); return f.slice(0, f.lastIndexOf(" ", f.lastIndexOf(" ")-1)); }
+function drawScore(ply){ return useContempt ? (ply%2===0 ? -T.CONT : T.CONT) : 0; }
+
+function scoreMove(m, ttm, ply){
+  if (ttm && m.from===ttm.from && m.to===ttm.to && m.promotion===ttm.promotion) return 1<<24;
+  if (m.captured) return (1<<20) + T.SEE[IDX[m.captured]]*16 - T.SEE[IDX[m.piece]]/100;
+  if (m.promotion) return (1<<20) + T.SEE[IDX[m.promotion]]*16;
+  const k = killers[ply];
+  if (k && ((k[0]&&k[0]===m.san) || (k[1]&&k[1]===m.san))) return 1<<19;
+  return 0;
+}
+function ordered(moves, ttm, ply){
+  const arr = moves.map(m=>[scoreMove(m,ttm,ply), m]);
+  arr.sort((a,b)=>b[0]-a[0]);
+  return arr.map(x=>x[1]);
+}
+function quiesce(alpha, beta, ply){
+  nodes++;
+  if ((nodes & 1023)===0 && performance.now() > deadline){ stopped = true; return alpha; }
+  const stand = evaluate();
+  if (stand >= beta) return stand;
+  if (stand > alpha) alpha = stand;
+  if (ply > 24) return alpha;
+  const caps = game.moves({verbose:true}).filter(m=>m.captured || m.promotion);
+  let best = stand;
+  for (const m of ordered(caps, null, ply)){
+    game.move(m);
+    const s = -quiesce(-beta, -alpha, ply+1);
+    game.undo();
+    if (stopped) return alpha;
+    if (s > best) best = s;
+    if (s > alpha){ alpha = s; if (alpha >= beta) break; }
+  }
+  return best;
+}
+function negamax(depth, alpha, beta, ply){
+  nodes++;
+  if ((nodes & 1023)===0 && performance.now() > deadline){ stopped = true; return alpha; }
+  if (ply > 0){
+    // chess.js replays the whole game to spot a repetition, far too costly at every node.
+    // Near the root is where declining one actually changes the move we play.
+    if (ply <= 2 && game.in_threefold_repetition()) return drawScore(ply);
+    if (game.insufficient_material()) return drawScore(ply);
+  }
+  const key = posKey(), alphaOrig = alpha;
+  const hit = TT.get(key);
+  let ttm = null;
+  if (hit){
+    ttm = hit.move;
+    if (hit.depth >= depth && ply > 0){
+      if (hit.flag===0) return hit.score;
+      if (hit.flag===1 && hit.score > alpha) alpha = hit.score;
+      else if (hit.flag===2 && hit.score < beta) beta = hit.score;
+      if (alpha >= beta) return hit.score;
+    }
+  }
+  const inCheck = game.in_check();
+  if (inCheck) depth++;                       // never evaluate a position on fire
+  if (depth <= 0) return quiesce(alpha, beta, ply);
+
+  const moves = game.moves({verbose:true});
+  if (moves.length === 0) return inCheck ? -MATE + ply : 0;
+
+  let best = -MATE-1, bestMove = null;
+  for (const m of ordered(moves, ttm, ply)){
+    game.move(m);
+    const s = -negamax(depth-1, -beta, -alpha, ply+1);
+    game.undo();
+    if (stopped) return best > -MATE ? best : alpha;
+    if (s > best){ best = s; bestMove = m; }
+    if (s > alpha){
+      alpha = s;
+      if (alpha >= beta){
+        if (!m.captured){
+          if (!killers[ply]) killers[ply] = [null,null];
+          if (killers[ply][0] !== m.san){ killers[ply][1] = killers[ply][0]; killers[ply][0] = m.san; }
+        }
+        break;
+      }
+    }
+  }
+  const flag = best <= alphaOrig ? 2 : (best >= beta ? 1 : 0);
+  if (!hit || hit.depth <= depth) TT.set(key, {depth, score:best, flag, move:bestMove});
+  return best;
+}
+
+function yieldUI(){ return new Promise(r => setTimeout(r, 0)); }
+async function think(soft, hard, onDepth){
+  nodes = 0; stopped = false; killers.length = 0;
+  deadline = performance.now() + hard;
+  const start = performance.now();
+  let best = null, score = 0, reached = 0, prevBest = null;
+  const root = game.moves({verbose:true});
+  if (root.length === 0) return null;
+  best = root[0];
+  let iterMs = 0;
+  for (let depth = 1; depth <= 40; depth++){
+    const iterStart = performance.now();
+    let a = -MATE-1, b = MATE+1, localBest = null, localScore = -MATE-1;
+    for (const m of ordered(root, best, 0)){
+      game.move(m);
+      const s = -negamax(depth-1, -b, -a, 1);
+      game.undo();
+      if (stopped) break;
+      if (s > localScore){ localScore = s; localBest = m; }
+      if (s > a) a = s;
+    }
+    if (stopped) break;
+    if (localBest){ best = localBest; score = localScore; reached = depth; }
+    if (onDepth) onDepth({depth:reached, score, nodes, ms:Math.round(performance.now()-start)});
+    if (Math.abs(score) > MATE - 100) break;
+    // The submission's own stop rule: a best move still changing between iterations earns
+    // the whole soft budget, a settled one gives way at 60% of it.
+    iterMs = performance.now() - iterStart;
+    const unstable = best !== prevBest;
+    prevBest = best;
+    const allowance = soft * (unstable ? 1.0 : 0.6);
+    const elapsed = performance.now() - start;
+    if (elapsed > allowance) break;
+    // And do not begin a depth that cannot finish. Each one costs roughly three times the
+    // last, so starting one anyway means running to the hard deadline for an answer that
+    // is thrown away - which is what made the opening moves take seventeen seconds.
+    if (elapsed + iterMs * 3 > allowance) break;
+    // Hand the tab back between iterations so the readout paints and the page stays alive.
+    await yieldUI();
+  }
+  if (TT.size > 240000) TT.clear();
+  return {move:best, score, depth:reached, nodes, ms:Math.round(performance.now()-start)};
+}
+
+/* ---------- rendering ---------- */
+const boardEl = document.getElementById("board");
+function render(){
+  const b = game.board();
+  const rows = human==="w" ? [0,1,2,3,4,5,6,7] : [7,6,5,4,3,2,1,0];
+  const cols = human==="w" ? [0,1,2,3,4,5,6,7] : [7,6,5,4,3,2,1,0];
+  boardEl.innerHTML = "";
+  let checkSq = null;
+  if (game.in_check()){
+    for (let r=0;r<8;r++) for (let c=0;c<8;c++){
+      const p=b[r][c];
+      if (p && p.type==="k" && p.color===game.turn()) checkSq = "abcdefgh"[c] + (8-r);
+    }
+  }
+  for (const r of rows) for (const c of cols){
+    const name = "abcdefgh"[c] + (8-r);
+    const p = b[r][c];
+    const d = document.createElement("div");
+    d.className = "sq " + ((r+c)%2===0 ? "l" : "d");
+    d.dataset.sq = name;
+    d.setAttribute("role","gridcell");
+    d.setAttribute("aria-label", name + (p ? " " + p.color + p.type : " empty"));
+    d.tabIndex = 0;
+    if (selected === name) d.classList.add("sel");
+    if (lastMove && (lastMove.from===name || lastMove.to===name)) d.classList.add("last");
+    if (checkSq === name) d.classList.add("chk");
+    if (p){
+      const s = document.createElement("span");
+      s.className = "pc " + p.color;
+      s.textContent = GLYPH[p.type];
+      d.appendChild(s);
+    }
+    if (legalTargets.includes(name)){
+      const mark = document.createElement("span");
+      mark.className = p ? "ring" : "dot";
+      d.appendChild(mark);
+    }
+    boardEl.appendChild(d);
+  }
+  renderMoves();
+}
+function renderMoves(){
+  const h = game.history(), el = document.getElementById("moves");
+  el.innerHTML = "";
+  for (let i=0;i<h.length;i+=2){
+    const n = document.createElement("span"); n.className="n"; n.textContent = (i/2+1)+".";
+    const w = document.createElement("span"); w.textContent = h[i] || "";
+    const bl = document.createElement("span"); bl.textContent = h[i+1] || "";
+    el.append(n,w,bl);
+  }
+  el.scrollTop = el.scrollHeight;
+}
+function setStatus(text, busy){
+  document.getElementById("statustext").innerHTML = text;
+  document.getElementById("live").classList.toggle("think", !!busy);
+}
+function gameOverText(){
+  if (game.in_checkmate()) return game.turn()===human ? "Checkmate &mdash; the engine wins." : "Checkmate &mdash; you win.";
+  if (game.in_stalemate()) return "Stalemate &mdash; drawn.";
+  if (game.in_threefold_repetition()) return "Draw by repetition.";
+  if (game.insufficient_material()) return "Draw &mdash; insufficient material.";
+  if (game.in_draw()) return "Draw by the fifty-move rule.";
+  return null;
+}
+function updateReadout(r){
+  if (!r){ ["r-depth","r-eval","r-nodes","r-time","r-move"].forEach(id=>document.getElementById(id).textContent="—");
+           document.getElementById("evalfill").style.width="50%"; return; }
+  // r.score is from the engine's point of view, so flip it whenever the engine is Black.
+  // This holds mid-search and after the move: the engine's colour is fixed either way.
+  const white = r.score * (human === "w" ? -1 : 1);
+  document.getElementById("r-depth").textContent = r.depth + " ply";
+  document.getElementById("r-eval").textContent = (white>0?"+":"") + (white/100).toFixed(2);
+  document.getElementById("r-nodes").textContent = r.nodes.toLocaleString();
+  document.getElementById("r-time").textContent = r.ms + " ms";
+  if (r.san !== undefined) document.getElementById("r-move").textContent = r.san || "—";
+  const pct = 50 + 50 * Math.tanh(white/400);
+  document.getElementById("evalfill").style.width = Math.max(2, Math.min(98, pct)) + "%";
+}
+
+/* ---------- interaction ---------- */
+function targetsFor(sq){
+  return game.moves({square:sq, verbose:true}).map(m=>m.to);
+}
+boardEl.addEventListener("click", e=>{
+  const cell = e.target.closest(".sq"); if (!cell || thinking) return;
+  handleSquare(cell.dataset.sq);
+});
+boardEl.addEventListener("keydown", e=>{
+  if (e.key!=="Enter" && e.key!==" ") return;
+  const cell = e.target.closest(".sq"); if (!cell || thinking) return;
+  e.preventDefault(); handleSquare(cell.dataset.sq);
+});
+function handleSquare(name){
+  if (game.game_over() || game.turn()!==human) return;
+  const piece = game.get(name);
+  if (selected && legalTargets.includes(name)){
+    const opts = game.moves({square:selected, verbose:true}).filter(m=>m.to===name);
+    if (opts.length && opts.some(m=>m.promotion)){ pendingPromo = {from:selected, to:name}; showPromo(); return; }
+    commit({from:selected, to:name});
+    return;
+  }
+  if (piece && piece.color===human){ selected = name; legalTargets = targetsFor(name); }
+  else { selected = null; legalTargets = []; }
+  render();
+}
+function showPromo(){ document.getElementById("promo").classList.add("on"); }
+document.getElementById("promo").addEventListener("click", e=>{
+  const b = e.target.closest("button");
+  document.getElementById("promo").classList.remove("on");
+  if (!b || !pendingPromo) { pendingPromo = null; return; }
+  const mv = {...pendingPromo, promotion:b.dataset.p};
+  pendingPromo = null;
+  commit(mv);
+});
+function commit(mv){
+  const done = game.move(mv);
+  if (!done) return;
+  lastMove = {from:done.from, to:done.to};
+  selected = null; legalTargets = [];
+  render();
+  const over = gameOverText();
+  if (over){ setStatus(over, false); return; }
+  engineTurn();
+}
+async function engineTurn(){
+  if (thinking) return;
+  thinking = true;
+  stopYourClock();
+  document.getElementById("undo").disabled = true;
+  const budget = budgetMs();
+  document.getElementById("r-budget").textContent =
+    (budget.soft/1000).toFixed(1) + "s / " + (budget.hard/1000).toFixed(1) + "s";
+  document.getElementById("r-tournament").textContent = (budget.tournamentSoft/1000).toFixed(1) + "s";
+  setStatus("Thinking&hellip;", true);
+  document.getElementById("r-move").textContent = "—";
+  await yieldUI();
+  const t0 = performance.now();
+  // Under a quarter second on the clock there is no time to think: play the best-ordered
+  // move at once rather than flag, which loses outright.
+  const r = engineClock <= PANIC_MS
+    ? {move: ordered(game.moves({verbose:true}), null, 0)[0], score: 0, depth: 0, nodes: 0, ms: 0}
+    : await think(budget.soft, budget.hard, live => {
+        updateReadout(live);
+        setStatus("Thinking at depth " + live.depth + "&hellip;", true);
+        paintClocks();
+      });
+  engineClock -= performance.now() - t0;
+  if (engineClock <= 0){
+    engineClock = 0; paintClocks(); thinking = false;
+    document.getElementById("undo").disabled = false;
+    setStatus("The engine flagged &mdash; you win on time.", false);
+    return;
+  }
+  engineClock += INC_MS;
+  paintClocks();
+  if (r && r.move){
+    const done = game.move(r.move);
+    r.san = done ? done.san : "";
+    lastMove = done ? {from:done.from, to:done.to} : null;
+    updateReadout(r);
+  }
+  thinking = false;
+  document.getElementById("undo").disabled = false;
+  render();
+  const over = gameOverText();
+  setStatus(over || ("Your move &mdash; you are " + (human==="w"?"White":"Black") + "."), false);
+  if (!over) startYourClock();
+}
+
+/* ---------- controls ---------- */
+document.getElementById("newgame").addEventListener("click", ()=>{
+  if (thinking) return;
+  game.reset(); TT.clear(); selected=null; legalTargets=[]; lastMove=null;
+  stopYourClock(); engineClock = BASE_MS; yourClock = 0; paintClocks();
+  document.getElementById("r-budget").textContent = "—";
+  updateReadout(null); render();
+  if (human==="b") engineTurn();
+  else setStatus("Your move &mdash; you are White.", false);
+});
+document.getElementById("undo").addEventListener("click", ()=>{
+  if (thinking) return;
+  game.undo(); game.undo();
+  selected=null; legalTargets=[]; lastMove=null; render();
+  setStatus("Your move &mdash; you are " + (human==="w"?"White":"Black") + ".", false);
+});
+document.getElementById("flip").addEventListener("click", e=>{
+  if (thinking) return;
+  human = human==="w" ? "b" : "w";
+  e.target.textContent = human==="w" ? "Play as Black" : "Play as White";
+  game.reset(); TT.clear(); selected=null; legalTargets=[]; lastMove=null;
+  stopYourClock(); engineClock = BASE_MS; yourClock = 0; paintClocks();
+  document.getElementById("r-budget").textContent = "—";
+  updateReadout(null); render();
+  if (human==="b"){ engineTurn(); } else setStatus("Your move &mdash; you are White.", false);
+});
+
+paintClocks();
+render();
+startYourClock();
+</script>

@@ -1,0 +1,19 @@
+[02:36] 
+## Unattended run, started 2026-09-04 02:36
+
+[02:36] ### 1. exemplar vs ours
+[02:36] Decides which engine everything else should be built on.
+
+[05:58] - ran 201 minutes
+[05:58] - SPRT: candidate is better - accept
+[05:58] - full log: `stage_exemplar.log`
+
+[05:58] ### 2. tuned mobility vs champion
+[05:58] Mobility fitted by Texel over all 4.55M positions, folded in and verified.
+
+[08:38] - ran 161 minutes
+[08:38] - SPRT: out of time at 150 minutes, undecided
+[08:38] - full log: `stage_mobility.log`
+
+[08:38] Nothing was promoted. Read the verdicts and decide.
+
