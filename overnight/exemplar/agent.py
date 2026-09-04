@@ -13,7 +13,12 @@ All one-off setup (numba JIT compilation of the whole engine) happens at
 import time via `_warmup()`, so it is paid for out of the 60s initialization
 budget rather than out of the per-move clock.
 
-Two extra sources of strength on top of the raw search:
+Three extra sources of strength on top of the raw search:
+  - An opening book (engine/book.py), tried first. Its moves are better than
+    the search finds in the seconds it would spend, and they cost no clock at
+    all, which matters more: the rated games all ran about three seconds a
+    move until roughly move 32 and then finished without searching. A book
+    move hands that time to the middlegame instead.
   - Syzygy tablebase probing (engine/tablebase.py) for <=4-man positions --
     instant and exact, tried before spending any search time.
   - Pondering: after we return our move, a background thread keeps
@@ -28,7 +33,7 @@ import time
 import chess
 
 from engine.engine import Engine
-from engine import tablebase
+from engine import book, tablebase
 
 TT_BITS = 22
 
@@ -188,6 +193,16 @@ def get_move(fen: str, time_left_ms: int) -> str:
         if not legal:
             return "0000"          # terminal position; harness should not call us here
         legal_ucis = {m.uci() for m in legal}
+
+        # Book first: it is the cheapest probe we have, it only ever answers in the
+        # opening, and the clock it saves there is what the middlegame runs out of.
+        # `probe_move` returns None on a miss or a failed load, and None is never in
+        # `legal_ucis`, so a bad book file costs nothing but a dictionary lookup.
+        book_uci = book.probe_move(board)
+        if book_uci in legal_ucis:
+            board.push_uci(book_uci)
+            _STATE.engine.push_uci(book_uci)
+            return book_uci
 
         if chess.popcount(board.occupied) <= TB_MAX_PIECES:
             tb_uci = tablebase.probe_best_move(board)

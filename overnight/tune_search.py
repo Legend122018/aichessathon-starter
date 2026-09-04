@@ -79,9 +79,14 @@ def load_exemplar():
     return module
 
 
-def suite(count: int) -> list[str]:
-    """Positions from self-play, past the book and short of the trivial endgame."""
-    rng = random.Random(5)
+def suite(count: int, seed: int = 5) -> list[str]:
+    """Positions from self-play, past the book and short of the trivial endgame.
+
+    The seed is a parameter because a sweep needs a second, independent suite to check
+    itself against. Sixty-four configurations tested at two standard errors will throw up
+    about three winners by chance alone, so a candidate that clears the bar on one suite
+    has only earned a rerun on another - not a place in the engine."""
+    rng = random.Random(seed)
     out: list[str] = []
     while len(out) < count:
         board = chess.Board()
@@ -179,6 +184,9 @@ def main() -> None:
     parser.add_argument("--think-ms", type=int, default=500,
                         help="node budget per move is this times 400")
     parser.add_argument("--judge-depth", type=int, default=12)
+    parser.add_argument("--seed", type=int, default=5,
+                        help="which position suite to use; change it to replicate a "
+                             "result on positions it was not selected on")
     parser.add_argument("--sweep", action="store_true")
     parser.add_argument("--baseline", action="store_true")
     parser.add_argument("--candidates", default="",
@@ -187,14 +195,14 @@ def main() -> None:
     args = parser.parse_args()
 
     agent = load_exemplar()
-    fens = suite(args.positions)
+    fens = suite(args.positions, args.seed)
     sf = chess.engine.SimpleEngine.popen_uci(str(STOCKFISH))
     sf.configure({"Threads": 1, "Hash": 128})
     judge = Judge(sf, args.judge_depth)
 
     defaults = {name: agent._STATE.engine.get_param(name) for name in SWEEP}
-    print(f"{len(fens)} positions, {args.think_ms * 400:,} nodes per move, "
-          f"judged by Stockfish at depth {args.judge_depth}", flush=True)
+    print(f"{len(fens)} positions (seed {args.seed}), {args.think_ms * 400:,} nodes "
+          f"per move, judged by Stockfish at depth {args.judge_depth}", flush=True)
     print("delta is the mean paired difference against the baseline, +-2 standard "
           "errors\n", flush=True)
 
