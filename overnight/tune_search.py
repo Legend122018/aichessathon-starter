@@ -87,9 +87,12 @@ class Judge:
     """Stockfish, scoring how much a move cost. Answers are cached: the same position
     comes back constantly across candidates, and each probe is the expensive part."""
 
-    def __init__(self, engine, movetime_ms: int):
+    def __init__(self, engine, depth: int):
         self.engine = engine
-        self.limit = chess.engine.Limit(time=movetime_ms / 1000.0)
+        # Fixed depth, not fixed time. A time-limited judge gives a different verdict on
+        # the same position from one run to the next, which put roughly a centipawn and a
+        # half of noise into every score - as much as the parameter effects being hunted.
+        self.limit = chess.engine.Limit(depth=depth)
         self.cache: dict[str, int] = {}
 
     def _score(self, board: chess.Board) -> int:
@@ -117,7 +120,12 @@ def score_config(agent, judge: Judge, fens: list[str], params: dict[str, int],
     for fen in fens:
         engine.new_game()
         engine.set_position(fen)
-        info = engine.search(max_depth=64, hard_ms=think_ms, soft_ms=think_ms)
+        # Fixed nodes, not fixed time. A time limit makes the search nondeterministic -
+        # the same configuration scored 20.7 to 23.8 cp across four identical runs, which
+        # is larger than any parameter effect being looked for. Counting nodes instead
+        # makes a rerun reproduce exactly, so a difference is the parameter and not the
+        # scheduler.
+        info = engine.search(max_depth=64, nodes=think_ms * 400)
         total += judge.loss(fen, info.bestmove)
     return total / len(fens)
 
@@ -125,8 +133,9 @@ def score_config(agent, judge: Judge, fens: list[str], params: dict[str, int],
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--positions", type=int, default=40)
-    parser.add_argument("--think-ms", type=int, default=500)
-    parser.add_argument("--judge-ms", type=int, default=300)
+    parser.add_argument("--think-ms", type=int, default=500,
+                        help="node budget per move is this times 400")
+    parser.add_argument("--judge-depth", type=int, default=12)
     parser.add_argument("--sweep", action="store_true")
     parser.add_argument("--baseline", action="store_true")
     parser.add_argument("--out", default=str(HERE / "REPORT_search_tuning.md"))
@@ -136,11 +145,11 @@ def main() -> None:
     fens = suite(args.positions)
     sf = chess.engine.SimpleEngine.popen_uci(str(STOCKFISH))
     sf.configure({"Threads": 1, "Hash": 128})
-    judge = Judge(sf, args.judge_ms)
+    judge = Judge(sf, args.judge_depth)
 
     defaults = {name: agent._STATE.engine.get_param(name) for name in SWEEP}
-    print(f"{len(fens)} positions, {args.think_ms}ms per move, "
-          f"judged by Stockfish at {args.judge_ms}ms\n", flush=True)
+    print(f"{len(fens)} positions, {args.think_ms * 400:,} nodes per move, "
+          f"judged by Stockfish at depth {args.judge_depth}\n", flush=True)
 
     started = time.monotonic()
     base = score_config(agent, judge, fens, defaults, args.think_ms)
@@ -151,7 +160,7 @@ def main() -> None:
         sf.quit()
         return
 
-    lines = [f"# Search parameter sweep\n",
+    lines = ["# Search parameter sweep\n",
              f"Average centipawn loss against Stockfish over {len(fens)} positions at "
              f"{args.think_ms}ms per move. Lower is better; the baseline is the shipped "
              f"configuration.\n",
