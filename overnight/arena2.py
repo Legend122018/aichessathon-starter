@@ -21,9 +21,11 @@ per-move exchange is one request and one reply, which is the shape of the real p
 from __future__ import annotations
 
 import argparse
+import contextlib
 import importlib.util
 import multiprocessing as mp
 import os
+import pathlib
 import random
 import sys
 import time
@@ -45,7 +47,7 @@ PIECE_VALUE = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3,
 
 def material(board: chess.Board) -> int:
     total = 0
-    for square, piece in board.piece_map().items():
+    for _square, piece in board.piece_map().items():
         value = PIECE_VALUE[piece.piece_type]
         total += value if piece.color == chess.WHITE else -value
     return total
@@ -70,6 +72,11 @@ def engine_process(conn, path: str, cores: list[int]) -> None:
     cleared by hand instead, which is the same thing the old harness did.
     """
     pin(cores)
+    # The platform puts the zip root first on sys.path, so an agent that ships a package
+    # beside it imports cleanly. Do the same here or such an agent cannot be measured.
+    root = str(pathlib.Path(path).resolve().parent)
+    if root not in sys.path:
+        sys.path.insert(0, root)
     spec = importlib.util.spec_from_file_location("arena_agent", path)
     module = importlib.util.module_from_spec(spec)
     sys.modules["arena_agent"] = module
@@ -80,14 +87,20 @@ def engine_process(conn, path: str, cores: list[int]) -> None:
         message = conn.recv()
         if message[0] == "stop":
             # Let any background search finish before the process goes away.
-            stop = getattr(module, "_ponder_stop", None)
-            if stop is not None:
-                stop()
+            for name in ("_ponder_stop", "_stop_ponder"):
+                stop = getattr(module, name, None)
+                if callable(stop):
+                    stop()
             return
         if message[0] == "reset":
-            stop = getattr(module, "_ponder_stop", None)
-            if stop is not None:
-                stop()
+            for name in ("_ponder_stop", "_stop_ponder"):
+                stop = getattr(module, name, None)
+                if callable(stop):
+                    stop()
+            reset_hook = getattr(module, "new_game", None) or getattr(module, "reset", None)
+            if callable(reset_hook):
+                with contextlib.suppress(Exception):
+                    reset_hook()
             for name in ("SEEN", "TT", "HISTORY", "COUNTER"):
                 holder = getattr(module, name, None)
                 if isinstance(holder, dict):
@@ -212,7 +225,7 @@ def main() -> None:
 
     for pair in slots:
         for conn, _ in pair:
-            tag, ready = conn.recv()
+            _tag, ready = conn.recv()
             if not ready:
                 print("warning: an engine came up without its JIT", flush=True)
     print("engines up, playing", flush=True)
@@ -259,10 +272,8 @@ def main() -> None:
     finally:
         for pair in slots:
             for conn, proc in pair:
-                try:
+                with contextlib.suppress(Exception):
                     conn.send(("stop",))
-                except Exception:
-                    pass
                 proc.join(timeout=5)
                 if proc.is_alive():
                     proc.terminate()
